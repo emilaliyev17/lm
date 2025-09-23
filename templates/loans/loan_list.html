@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load humanize %}
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
     <h2 style="margin: 0;">Loan Dashboard</h2>
@@ -15,7 +16,7 @@
         <div class="stat-label">Active Loans</div>
     </div>
     <div class="stat-card">
-        <div class="stat-value">${{ total_portfolio|floatformat:0|default:"0" }}</div>
+        <div class="stat-value">${{ total_portfolio|floatformat:0|intcomma|default:"0" }}</div>
         <div class="stat-label">Total Portfolio</div>
     </div>
 </div>
@@ -39,15 +40,15 @@
         <tr>
             <td><strong>{{ loan.card_number }}</strong></td>
             <td>{{ loan.borrower }}</td>
-            <td>${{ loan.advanced_loan|floatformat:0 }}</td>
-            <td>${{ loan.first_wired|floatformat:0 }}</td>
+            <td>${{ loan.advanced_loan|floatformat:0|intcomma }}</td>
+            <td>${{ loan.first_wired|floatformat:0|intcomma }}</td>
             <td>{{ loan.interest_rate_display|floatformat:1 }}%</td>
-            <td>${{ loan.settlement|floatformat:0 }}</td>
+            <td>${{ loan.settlement|floatformat:0|intcomma }}</td>
             <td>
                 {% if loan.checkpoint_valid %}
-                    <span class="checkpoint-valid">✓ ${{ loan.checkpoint|floatformat:2 }}</span>
+                    <span class="checkpoint-valid">✓ ${{ loan.checkpoint|floatformat:2|intcomma }}</span>
                 {% else %}
-                    <span class="checkpoint-invalid">✗ ${{ loan.checkpoint|floatformat:2 }}</span>
+                    <span class="checkpoint-invalid">✗ ${{ loan.checkpoint|floatformat:2|intcomma }}</span>
                 {% endif %}
             </td>
             <td><span class="status-active">{{ loan.status }}</span></td>

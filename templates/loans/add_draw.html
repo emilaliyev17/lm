@@ -1,12 +1,13 @@
 {% extends 'base.html' %}
+{% load humanize %}
 {% block content %}
 <h2>Add Draw to Loan: {{ loan.card_number }}</h2>
 <p style="color: #666;">Borrower: {{ loan.borrower.name }}</p>
 
 <div class="detail-card" style="margin-bottom: 2rem;">
     <h3>Current Loan Status</h3>
-    <p><strong>Advanced Loan Amount:</strong> ${{ loan.advanced_loan_amount|floatformat:2 }}</p>
-    <p><strong>Current Total Funded:</strong> ${{ total_funded_before|floatformat:2 }}</p>
+    <p><strong>Advanced Loan Amount:</strong> ${{ loan.advanced_loan_amount|floatformat:2|intcomma }}</p>
+    <p><strong>Current Total Funded:</strong> ${{ total_funded_before|floatformat:2|intcomma }}</p>
     <p><strong>Next Draw Number:</strong> #{{ next_draw_number }}</p>
 </div>
 
@@ -24,7 +25,7 @@
         <tr>
             <td>#{{ draw.draw_number }}</td>
             <td>{{ draw.draw_date }}</td>
-            <td>${{ draw.amount|floatformat:2 }}</td>
+            <td>${{ draw.amount|floatformat:2|intcomma }}</td>
             <td>{{ draw.interest_rate|floatformat:2 }}%</td>
         </tr>
         {% endfor %}

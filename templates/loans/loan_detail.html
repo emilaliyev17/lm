@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load humanize %}
 {% block content %}
 <h2>Loan Card: {{ loan.card_number }}</h2>
 <p style="color: #666; margin-bottom: 2rem;">Borrower: {{ loan.borrower.name }}</p>
@@ -8,13 +9,13 @@
         <h3>Loan Amounts</h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
             <div>
-                <strong>Advanced Loan:</strong> ${{ loan.advanced_loan_amount|floatformat:2 }}<br>
-                <strong>First Wired:</strong> ${{ loan.first_wired_amount|floatformat:2 }}<br>
+                <strong>Advanced Loan:</strong> ${{ loan.advanced_loan_amount|floatformat:2|intcomma }}<br>
+                <strong>First Wired:</strong> ${{ loan.first_wired_amount|floatformat:2|intcomma }}<br>
                 <strong>Interest Rate:</strong> {{ interest_rate_display|floatformat:1 }}%
             </div>
             <div>
-                <strong>Settlement Charges:</strong> ${{ loan.total_settlement_charges|floatformat:2 }}<br>
-                <strong>Total Funded:</strong> ${{ total_funded|floatformat:2 }}<br>
+                <strong>Settlement Charges:</strong> ${{ loan.total_settlement_charges|floatformat:2|intcomma }}<br>
+                <strong>Total Funded:</strong> ${{ total_funded|floatformat:2|intcomma }}<br>
                 <strong>Funded Date:</strong> {{ loan.first_loan_date|date:"M d, Y" }}
             </div>
         </div>
@@ -26,9 +27,9 @@
             J14 + J22 - J13 = J23<br>
             ${{ loan.first_wired_amount }} + ${{ loan.total_settlement_charges }} - ${{ loan.advanced_loan_amount }} = 
             {% if checkpoint_valid %}
-                <span class="checkpoint-valid">${{ checkpoint|floatformat:2 }} ✓</span>
+                <span class="checkpoint-valid">${{ checkpoint|floatformat:2|intcomma }} ✓</span>
             {% else %}
-                <span class="checkpoint-invalid">${{ checkpoint|floatformat:2 }} ✗</span>
+                <span class="checkpoint-invalid">${{ checkpoint|floatformat:2|intcomma }} ✗</span>
             {% endif %}
         </div>
     </div>
@@ -41,7 +42,7 @@
             {% for charge in settlement_charges %}
             <tr>
                 <td>{{ charge.charge_type.name }}</td>
-                <td style="text-align: right;">${{ charge.amount|floatformat:2 }}</td>
+                <td style="text-align: right;">${{ charge.amount|floatformat:2|intcomma }}</td>
             </tr>
             {% endfor %}
         </table>
@@ -51,19 +52,19 @@
         <table>
             <tr>
                 <td><strong>Draw #0 (Advanced Loan)</strong></td>
-                <td style="text-align: right;">${{ loan.advanced_loan_amount|floatformat:2 }}</td>
+                <td style="text-align: right;">${{ loan.advanced_loan_amount|floatformat:2|intcomma }}</td>
                 <td style="text-align: right;">{{ loan.first_loan_date|date:"M d, Y" }}</td>
             </tr>
             {% for draw in loan.additional_draws.all %}
             <tr>
                 <td><strong>Draw #{{ draw.draw_number|add:-1 }}</strong></td>
-                <td style="text-align: right;">${{ draw.amount|floatformat:2 }}</td>
+                <td style="text-align: right;">${{ draw.amount|floatformat:2|intcomma }}</td>
                 <td style="text-align: right;">{{ draw.draw_date|date:"M d, Y" }}</td>
             </tr>
             {% endfor %}
             <tr style="border-top: 2px solid #ddd; font-weight: bold;">
                 <td>Total Funded</td>
-                <td style="text-align: right;">${{ total_funded|floatformat:2 }}</td>
+                <td style="text-align: right;">${{ total_funded|floatformat:2|intcomma }}</td>
                 <td></td>
             </tr>
         </table>
