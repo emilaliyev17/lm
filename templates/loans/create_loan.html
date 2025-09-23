@@ -3,7 +3,7 @@
 <h2>Create New Loan Card</h2>
 
 <div id="checkpointDisplay" style="background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 2px solid #ddd;">
-    <h3 style="margin-top: 0;">Checkpoint Validation (J23)</h3>
+    <h3 style="margin-top: 0;">Checkpoint Validation</h3>
     <div style="font-family: monospace; font-size: 1.2rem; text-align: center; margin: 1rem 0;">
         <span id="firstWiredDisplay">$0.00</span> + 
         <span id="settlementDisplay">$0.00</span> - 
@@ -55,20 +55,20 @@
         <h3>Loan Amounts</h3>
         
         <div style="margin-bottom: 1rem;">
-            <label>Advanced Loan Amount (J13)*</label>
+            <label>Advanced Loan Amount*</label>
             <input type="number" name="advanced_loan_amount" id="advancedLoan" required step="0.01">
             <small style="color: #666;">Total debt borrower signs for</small>
         </div>
         
         <div style="margin-bottom: 1rem;">
-            <label>First Wired Amount (J14)*</label>
+            <label>First Wired Amount*</label>
             <input type="number" name="first_wired_amount" id="firstWired" required step="0.01">
             <small style="color: #666;">Money actually sent to borrower</small>
         </div>
     </div>
     
     <div class="detail-card" style="margin-bottom: 2rem;">
-        <h3>Settlement Charges (J22)</h3>
+        <h3>Settlement Charges</h3>
         
         {% for charge_type in charge_types %}
         <div style="margin-bottom: 1rem;">

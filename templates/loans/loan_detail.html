@@ -8,12 +8,12 @@
         <h3>Loan Amounts</h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
             <div>
-                <strong>Advanced Loan (J13):</strong> ${{ loan.advanced_loan_amount|floatformat:2 }}<br>
-                <strong>First Wired (J14):</strong> ${{ loan.first_wired_amount|floatformat:2 }}<br>
+                <strong>Advanced Loan:</strong> ${{ loan.advanced_loan_amount|floatformat:2 }}<br>
+                <strong>First Wired:</strong> ${{ loan.first_wired_amount|floatformat:2 }}<br>
                 <strong>Interest Rate:</strong> {{ interest_rate_display|floatformat:1 }}%
             </div>
             <div>
-                <strong>Settlement Charges (J22):</strong> ${{ loan.total_settlement_charges|floatformat:2 }}<br>
+                <strong>Settlement Charges:</strong> ${{ loan.total_settlement_charges|floatformat:2 }}<br>
                 <strong>Total Funded:</strong> ${{ total_funded|floatformat:2 }}<br>
                 <strong>Funded Date:</strong> {{ loan.first_loan_date|date:"M d, Y" }}
             </div>
