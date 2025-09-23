@@ -1,8 +1,13 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from django.db.models import Sum, Count
+from django.contrib import messages
+from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
 from decimal import Decimal
-from .models import LoanCard, Borrower, SettlementChargeType, SettlementCharge, Draw
+from datetime import datetime, date, timedelta
+import calendar
+from .models import LoanCard, Borrower, SettlementChargeType, SettlementCharge, Draw, InterestSchedule
 
 # Create your views here.
 
@@ -291,3 +296,191 @@ def create_borrower(request):
         )
         return redirect('borrower_list')
     return render(request, 'loans/create_borrower.html')
+
+def add_extension(request, card_number):
+    loan = get_object_or_404(LoanCard, card_number=card_number)
+    
+    if request.method == 'POST':
+        try:
+            from .models import LoanExtension
+            extension = LoanExtension.objects.create(
+                loan_card=loan,
+                extension_months=int(request.POST.get('extension_months', 0)),
+                extension_fee=Decimal(request.POST.get('extension_fee', '0')),
+                has_interest=request.POST.get('has_interest') == 'yes',
+                interest_rate=Decimal(request.POST.get('interest_rate', '0.13')) if request.POST.get('has_interest') == 'yes' else None,
+                reason=request.POST.get('reason', '')
+            )
+            return redirect('loan_detail', card_number=card_number)
+        except Exception as e:
+            context = {
+                'loan': loan,
+                'error': str(e)
+            }
+            return render(request, 'loans/add_extension.html', context)
+    
+    context = {
+        'loan': loan,
+        'existing_extensions': loan.extensions.all()
+    }
+    return render(request, 'loans/add_extension.html', context)
+
+
+def interest_schedule(request, card_number):
+    """Display and manage interest payment schedule"""
+    loan = get_object_or_404(LoanCard, card_number=card_number)
+    
+    # Get or create interest schedules
+    schedules = loan.interest_schedules.all().order_by('charge_date')
+    
+    context = {
+        'loan': loan,
+        'schedules': schedules,
+    }
+    return render(request, 'loans/interest_schedule.html', context)
+
+
+def add_months(source_date, months):
+    """Add months to a date, handling month overflow correctly"""
+    month = source_date.month - 1 + months
+    year = source_date.year + month // 12
+    month = month % 12 + 1
+    day = min(source_date.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
+
+
+def generate_interest_schedule(request, card_number):
+    """Generate monthly interest payment schedule for a loan"""
+    loan = get_object_or_404(LoanCard, card_number=card_number)
+    
+    if request.method == 'POST':
+        try:
+            # Calculate the end date (maturity + extensions)
+            end_date = loan.maturity_date
+            if end_date is None:
+                # If no maturity date set, default to 12 months from first loan date
+                end_date = add_months(loan.first_loan_date, 12)
+            
+            # Add extension months to end date
+            total_extension_months = loan.extensions.aggregate(
+                total=Sum('extension_months')
+            )['total'] or 0
+            
+            if total_extension_months > 0:
+                end_date = add_months(end_date, total_extension_months)
+            
+            # Generate monthly schedule from first loan date to end date
+            current_date = loan.first_loan_date.replace(day=1)  # Start from first of the month
+            period_number = 1
+            created_count = 0
+            
+            while current_date <= end_date:
+                # Check if this period already exists and is posted
+                existing_schedule = loan.interest_schedules.filter(
+                    period_type='monthly',
+                    period_number=period_number
+                ).first()
+                
+                if existing_schedule and existing_schedule.is_posted:
+                    # Skip posted records
+                    current_date = add_months(current_date, 1)
+                    period_number += 1
+                    continue
+                
+                # Calculate total monthly interest
+                # Base interest from advanced loan amount
+                monthly_interest = (loan.advanced_loan_amount * loan.initial_interest_rate) / 12
+                
+                # Add interest from all draws that are active by this date
+                for draw in loan.additional_draws.all():
+                    if draw.draw_date <= current_date:
+                        monthly_interest += (draw.amount * draw.interest_rate) / 12
+                
+                # Create or update the schedule record
+                if existing_schedule and not existing_schedule.is_posted:
+                    # Update existing unpposted record
+                    existing_schedule.charge_date = current_date
+                    existing_schedule.calculated_amount = monthly_interest
+                    existing_schedule.save()
+                else:
+                    # Create new record
+                    InterestSchedule.objects.create(
+                        loan_card=loan,
+                        period_number=period_number,
+                        period_type='monthly',
+                        charge_date=current_date,
+                        calculated_amount=monthly_interest,
+                        is_posted=False
+                    )
+                    created_count += 1
+                
+                current_date = add_months(current_date, 1)
+                period_number += 1
+            
+            if created_count > 0:
+                messages.success(request, f'Generated {created_count} new interest schedule periods.')
+            else:
+                messages.info(request, 'Interest schedule already exists or all periods are posted.')
+                
+        except Exception as e:
+            messages.error(request, f'Error generating interest schedule: {str(e)}')
+    
+    return redirect('interest_schedule', card_number=card_number)
+
+
+@csrf_exempt
+def post_interest_schedule(request):
+    """Handle posting of interest schedule records"""
+    if request.method == 'POST':
+        try:
+            import json
+            data = json.loads(request.body)
+            
+            schedule_id = data.get('schedule_id')
+            received_date = data.get('received_date')
+            invoice_number = data.get('invoice_number')
+            adjusted_amount = data.get('adjusted_amount')
+            
+            if not schedule_id:
+                return JsonResponse({'success': False, 'error': 'Schedule ID is required'})
+            
+            # Get the schedule record
+            schedule = get_object_or_404(InterestSchedule, id=schedule_id)
+            
+            # Check if already posted
+            if schedule.is_posted:
+                return JsonResponse({'success': False, 'error': 'This schedule is already posted'})
+            
+            # Update the schedule
+            if received_date:
+                try:
+                    schedule.received_date = datetime.strptime(received_date, '%Y-%m-%d').date()
+                except ValueError:
+                    return JsonResponse({'success': False, 'error': 'Invalid date format'})
+            
+            if invoice_number:
+                schedule.invoice_number = invoice_number
+            
+            if adjusted_amount:
+                try:
+                    schedule.adjusted_amount = Decimal(str(adjusted_amount))
+                except (ValueError, TypeError):
+                    return JsonResponse({'success': False, 'error': 'Invalid amount'})
+            
+            # Mark as posted
+            schedule.is_posted = True
+            schedule.posted_at = timezone.now()
+            schedule.posted_by = 'Admin'  # You might want to use request.user.username if you have authentication
+            schedule.save()
+            
+            return JsonResponse({
+                'success': True, 
+                'message': f'Schedule period {schedule.period_number} posted successfully'
+            })
+            
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON data'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Only POST method allowed'})

@@ -44,14 +44,16 @@ loan-management-system/
 3. **settlement_charge_types** - Configurable charge types
 4. **settlement_charges** - Individual charges per loan
 5. **draws** - Additional funding after loan creation
-6. **interest_payments** - Payment tracking
-7. **loan_extensions** - Loan period extensions with fees (NEW)
+6. **interest_payments** - Payment tracking (legacy)
+7. **loan_extensions** - Loan period extensions with fees
+8. **interest_schedules** - Monthly interest payment schedule (NEW)
 
 ### Critical Relationships
 - LoanCard → Borrower (many-to-one)
 - LoanCard → SettlementCharge (one-to-many)
 - LoanCard → Draw (one-to-many)
-- LoanCard → LoanExtension (one-to-many) ← NEW
+- LoanCard → LoanExtension (one-to-many)
+- LoanCard → InterestSchedule (one-to-many) ← NEW
 - SettlementCharge → SettlementChargeType (many-to-one)
 
 ## TECHNICAL STACK
@@ -75,6 +77,21 @@ def calculate_checkpoint(self):
 def get_total_funded_amount(self):
     additional_draws_total = self.additional_draws.aggregate(total=Sum('amount'))['total'] or Decimal('0')
     return self.advanced_loan_amount + additional_draws_total  # NOT first_wired_amount!
+```
+
+### models.py - LoanCard.calculate_monthly_interest()
+```python
+def calculate_monthly_interest(self, for_date):
+    """Calculate interest for a specific month"""
+    # Base interest from advanced loan
+    base = self.advanced_loan_amount * Decimal(str(self.initial_interest_rate)) / 12
+    
+    # Add interest from each additional draw that exists before this date
+    for draw in self.additional_draws.filter(draw_date__lte=for_date):
+        draw_interest = draw.amount * Decimal(str(draw.interest_rate)) / 12
+        base += draw_interest
+    
+    return base.quantize(Decimal('0.01'))
 ```
 
 ## RECENT UPDATES & ENHANCEMENTS
@@ -183,6 +200,144 @@ def get_total_funded_amount(self):
 {% endif %}
 ```
 
+### Interest Payment Schedule System (September 2024) - MAJOR NEW FEATURE
+
+#### Overview
+Complete interest payment schedule management system replacing the legacy `interest_payments` model. Provides automated schedule generation, amount adjustments, and posting capabilities with full audit trail.
+
+#### New Model: InterestSchedule
+```python
+class InterestSchedule(models.Model):
+    """Monthly interest payment schedule for loan cards"""
+    loan_card = models.ForeignKey(LoanCard, on_delete=models.CASCADE, related_name='interest_schedules')
+    period_number = models.IntegerField()  # 0 for daily, 1,2,3... for monthly
+    period_type = models.CharField(max_length=10, choices=[('daily', 'Daily'), ('monthly', 'Monthly')])
+    charge_date = models.DateField()
+    calculated_amount = models.DecimalField(max_digits=12, decimal_places=2)  # Auto-calculated
+    adjusted_amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)  # Manual adjustments
+    is_posted = models.BooleanField(default=False)
+    received_date = models.DateField(blank=True, null=True)
+    invoice_number = models.CharField(max_length=100, blank=True, null=True)  # QBO invoice
+    posted_at = models.DateTimeField(blank=True, null=True)
+    posted_by = models.CharField(max_length=100, blank=True, null=True)
+```
+
+#### Key Features
+
+1. **Automated Schedule Generation**
+   - Calculates monthly interest from loan start date to maturity date
+   - Includes loan extensions automatically
+   - Formula: `(Advanced Loan * rate / 12) + Σ(Draw Amount * Draw Rate / 12)`
+   - Only includes draws funded before each period's charge date
+
+2. **Amount Adjustment System**
+   - `calculated_amount`: Auto-computed monthly interest
+   - `adjusted_amount`: Manual override (optional)
+   - `effective_amount`: Property returning adjusted or calculated amount
+
+3. **Posted Record Protection**
+   - Posted records are completely locked from modification
+   - Clean validation with `ValidationError` on attempted changes
+   - Audit trail with posting timestamp and user
+
+4. **Professional UI Interface**
+   - Modal form for posting with amount adjustments
+   - Read-only posted records with green checkmarks
+   - Editable pending records with inline amount fields
+   - Complete AJAX posting with error handling
+
+#### New Views and URLs
+
+##### Views Added:
+- `interest_schedule(request, card_number)`: Display schedule page
+- `generate_interest_schedule(request, card_number)`: Auto-generate monthly periods
+- `post_interest_schedule(request)`: AJAX endpoint for posting records
+
+##### URL Patterns:
+```python
+path('loans/<str:card_number>/interest-schedule/', views.interest_schedule, name='interest_schedule'),
+path('loans/<str:card_number>/generate-schedule/', views.generate_interest_schedule, name='generate_interest_schedule'),
+path('post-interest-schedule/', views.post_interest_schedule, name='post_interest_schedule'),
+```
+
+#### Templates Added/Modified
+
+1. **New Template**: `interest_schedule.html`
+   - Complete interest schedule management interface
+   - Professional modal form for posting
+   - Real-time amount editing for pending records
+   - Comprehensive schedule statistics
+
+2. **Enhanced**: `loan_detail.html`
+   - Added Interest Schedule Section showing:
+     - Total periods count
+     - Posted vs pending counts
+     - Monthly interest calculation
+     - Direct navigation to full schedule
+
+3. **Enhanced**: `base.html`
+   - Added `.btn-info` styling for interest schedule navigation
+
+#### Technical Implementation Details
+
+##### Schedule Generation Logic:
+```python
+def generate_interest_schedule(request, card_number):
+    # Calculates end date including extensions
+    # Generates monthly periods from loan start to end
+    # Protects posted records from modification
+    # Updates existing unposted records vs creating duplicates
+```
+
+##### Interest Calculation Method:
+```python
+def calculate_monthly_interest(self, for_date):
+    # Time-aware calculation based on funding dates
+    # Includes base loan amount and applicable draws
+    # Returns Decimal with proper precision
+```
+
+##### Modal Posting System:
+- Professional form interface with validation
+- CSRF protection and JSON API responses
+- Amount adjustment with current/new comparison
+- Complete audit trail capture
+
+#### Business Logic Integration
+
+1. **Extension System Compatibility**
+   - Schedule automatically extends based on `LoanExtension` records
+   - Proper date arithmetic using custom `add_months()` function
+   - No external dependencies required
+
+2. **Draw Integration**
+   - Only includes draws funded before each period's charge date
+   - Accurate time-based interest calculations
+   - Supports varying interest rates per draw
+
+3. **Data Integrity**
+   - Unique constraints on loan/period combinations
+   - Posted record immutability with model-level validation
+   - Comprehensive error handling with user feedback
+
+#### Migration Notes
+- Database migration will be required to add `interest_schedules` table
+- Legacy `interest_payments` table remains for historical data
+- No data migration needed - new system is independent
+
+#### User Workflow
+1. **Generate Schedule**: Click "Generate Schedule" → Creates monthly periods automatically
+2. **Review/Adjust**: Edit amounts inline for pending periods as needed
+3. **Post Payments**: Click "Post" → Modal form with received date, invoice number, final amount
+4. **Audit Trail**: Posted records show posting details and become read-only
+5. **Schedule Overview**: View summary statistics on main loan detail page
+
+#### Critical Business Rules
+- Posted records cannot be modified (enforced at model level)
+- Interest calculations are time-aware (only includes draws funded by charge date)
+- Schedule extends automatically based on loan extensions
+- Amount adjustments are preserved alongside original calculated amounts
+
 ## COMMON MISTAKES TO AVOID
 
 ### 1. Interest Rate Display
@@ -211,7 +366,10 @@ def get_total_funded_amount(self):
 /api/loans/create/             # Create new loan
 /api/loans/<card_number>/      # Loan detail view
 /api/loans/<card_number>/add-draw/  # Add additional draw
-/api/loans/<card_number>/add-extension/  # Add loan extension (NEW)
+/api/loans/<card_number>/add-extension/  # Add loan extension
+/api/loans/<card_number>/interest-schedule/  # Interest payment schedule (NEW)
+/api/loans/<card_number>/generate-schedule/  # Generate interest schedule (NEW)
+/api/post-interest-schedule/   # AJAX endpoint for posting schedules (NEW)
 /api/borrowers/                # Borrower list
 /api/borrowers/create/         # Create borrower
 /admin/                        # Django admin panel
@@ -219,10 +377,13 @@ def get_total_funded_amount(self):
 
 ## VIEW FUNCTIONS
 - **loan_list** - Dashboard with all loans
-- **loan_detail** - Specific loan details with extensions display
+- **loan_detail** - Specific loan details with extensions and interest schedule overview
 - **create_loan** - Form with checkpoint validation
 - **add_draw** - Additional funding after creation
-- **add_extension** - Extend loan period with fees (NEW)
+- **add_extension** - Extend loan period with fees
+- **interest_schedule** - Display and manage interest payment schedule (NEW)
+- **generate_interest_schedule** - Auto-generate monthly interest periods (NEW)
+- **post_interest_schedule** - AJAX endpoint for posting interest payments (NEW)
 - **borrower_list** - All borrowers
 - **create_borrower** - New borrower form
 

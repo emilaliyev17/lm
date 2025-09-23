@@ -1,0 +1,420 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block content %}
+<h2>Interest Payment Schedule</h2>
+<p style="color: #666; margin-bottom: 2rem;">Loan Card: {{ loan.card_number }} - Borrower: {{ loan.borrower.name }}</p>
+
+<!-- Messages -->
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}" style="padding: 1rem; margin: 1rem 0; border-radius: 5px; 
+             {% if message.tags == 'success' %}background: #d4edda; color: #155724; border: 1px solid #c3e6cb;
+             {% elif message.tags == 'error' %}background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;
+             {% else %}background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb;{% endif %}">
+            {{ message }}
+        </div>
+    {% endfor %}
+{% endif %}
+
+<div class="detail-card">
+    <h3>Interest Schedule</h3>
+    {% if schedules %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Period</th>
+                    <th>Charge Date</th>
+                    <th>Amount</th>
+                    <th>Received Date</th>
+                    <th>Invoice #</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for schedule in schedules %}
+                <tr>
+                    <td>
+                        {% if schedule.period_type == 'daily' %}
+                            Daily
+                        {% else %}
+                            Period {{ schedule.period_number }}
+                        {% endif %}
+                    </td>
+                    <td>{{ schedule.charge_date|date:"n/j/Y" }}</td>
+                    <td>
+                        {% if schedule.is_posted %}
+                            <!-- Posted rows are read-only -->
+                            ${{ schedule.effective_amount|floatformat:2|intcomma }}
+                        {% else %}
+                            <!-- Pending rows are editable -->
+                            $<input type="number" 
+                                   step="0.01" 
+                                   id="amount-{{ schedule.id }}"
+                                   value="{{ schedule.effective_amount|floatformat:2 }}" 
+                                   style="width: 100px; padding: 0.25rem; border: 1px solid #ddd; border-radius: 3px; text-align: right; margin-left: 3px;">
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if schedule.received_date %}
+                            {{ schedule.received_date|date:"n/j/Y" }}
+                        {% else %}
+                            <span style="color: #999;">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if schedule.invoice_number %}
+                            {{ schedule.invoice_number }}
+                        {% else %}
+                            <span style="color: #999;">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if schedule.is_posted %}
+                            <span style="color: #27ae60; font-weight: bold;">Posted ✓</span>
+                        {% else %}
+                            <span style="color: #f39c12; font-weight: bold;">Pending</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if schedule.is_posted %}
+                            <!-- Posted rows show posted information -->
+                            {% if schedule.posted_at and schedule.posted_by %}
+                                <small style="color: #666;">
+                                    {{ schedule.posted_at|date:"n/j/Y g:i A" }}<br>
+                                    by {{ schedule.posted_by }}
+                                </small>
+                            {% else %}
+                                <span style="color: #27ae60;">✓ Posted</span>
+                            {% endif %}
+                        {% else %}
+                            <!-- Pending rows show Post button -->
+                            <button type="button" 
+                                    class="btn btn-success post-btn" 
+                                    data-schedule-id="{{ schedule.id }}"
+                                    style="padding: 0.3rem 0.8rem; font-size: 0.875rem;">
+                                Post
+                            </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p style="color: #666; text-align: center; padding: 2rem;">No interest schedules found for this loan.</p>
+    {% endif %}
+</div>
+
+<!-- Summary Information -->
+<div class="detail-grid" style="margin-top: 2rem;">
+    <div class="detail-card">
+        <h3>Schedule Summary</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+            <div>
+                <strong>Total Periods:</strong> {{ schedules|length }}<br>
+                <strong>Posted:</strong> 
+                {% with posted=schedules|dictsort:"is_posted"|slice:"-1"|first %}
+                    {% if posted.is_posted %}
+                        {{ schedules|dictsortreversed:"is_posted"|length }}
+                    {% else %}
+                        0
+                    {% endif %}
+                {% endwith %}
+            </div>
+            <div>
+                <strong>Pending:</strong>
+                {% with pending=schedules|dictsort:"is_posted"|first %}
+                    {% if not pending.is_posted %}
+                        {{ schedules|dictsort:"is_posted"|length }}
+                    {% else %}
+                        0
+                    {% endif %}
+                {% endwith %}<br>
+                <strong>Current Period:</strong>
+                {% if schedules %}See table above{% else %}None{% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="detail-card">
+        <h3>Loan Information</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+            <div>
+                <strong>Card Number:</strong> {{ loan.card_number }}<br>
+                <strong>Status:</strong> {{ loan.get_status_display }}<br>
+            </div>
+            <div>
+                <strong>Interest Rate:</strong> {% widthratio loan.initial_interest_rate 1 100 %}%<br>
+                <strong>Monthly Interest:</strong> ${{ loan.get_monthly_interest_for_initial|floatformat:2|intcomma }}<br>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div style="margin-top: 2rem;">
+    <a href="{% url 'loan_detail' loan.card_number %}" class="btn">← Back to Loan Details</a>
+    <form method="post" action="{% url 'generate_interest_schedule' loan.card_number %}" style="display: inline; margin-left: 1rem;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success">+ Generate Schedule</button>
+    </form>
+    <button type="button" class="btn btn-primary" style="margin-left: 0.5rem;">Export to CSV</button>
+</div>
+
+<!-- Post Interest Schedule Modal -->
+<div id="postModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Post Interest Payment</h3>
+            <span class="close" onclick="closePostModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="postForm">
+                <div class="form-group">
+                    <label for="currentAmount">Current Amount:</label>
+                    <div id="currentAmount" class="readonly-field">$0.00</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="adjustedAmount">Adjusted Amount: *</label>
+                    <input type="number" id="adjustedAmount" name="adjustedAmount" step="0.01" required
+                           style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                
+                <div class="form-group">
+                    <label for="receivedDate">Received Date: *</label>
+                    <input type="date" id="receivedDate" name="receivedDate" required
+                           style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                
+                <div class="form-group">
+                    <label for="invoiceNumber">Invoice Number:</label>
+                    <input type="text" id="invoiceNumber" name="invoiceNumber" placeholder="Optional"
+                           style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" onclick="closePostModal()" class="btn" style="margin-right: 1rem;">Cancel</button>
+                    <button type="submit" class="btn btn-success">Post Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Additional styles for the interest schedule table */
+    .interest-schedule-table input[type="number"] {
+        width: 100px;
+        padding: 0.25rem;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        text-align: right;
+    }
+    
+    .interest-schedule-table input[type="number"]:focus {
+        border-color: #3498db;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+    
+    .status-posted {
+        background: #d4edda;
+        color: #155724;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+    }
+    
+    .status-pending {
+        background: #fff3cd;
+        color: #856404;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+    }
+    
+    /* Modal styles */
+    .modal {
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .modal-content {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    .modal-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #f8f9fa;
+        border-radius: 8px 8px 0 0;
+    }
+    
+    .modal-header h3 {
+        margin: 0;
+        color: #333;
+    }
+    
+    .close {
+        color: #aaa;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        line-height: 1;
+    }
+    
+    .close:hover {
+        color: #333;
+    }
+    
+    .modal-body {
+        padding: 2rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: bold;
+        color: #333;
+    }
+    
+    .readonly-field {
+        background-color: #f8f9fa;
+        padding: 0.5rem;
+        border: 1px solid #e9ecef;
+        border-radius: 4px;
+        color: #495057;
+        font-family: monospace;
+        font-size: 1.1rem;
+        font-weight: bold;
+    }
+    
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 2rem;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle Post button clicks
+    document.querySelectorAll('.post-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const scheduleId = this.getAttribute('data-schedule-id');
+            postInterestSchedule(scheduleId);
+        });
+    });
+
+    function postInterestSchedule(scheduleId) {
+        // Get the current amount from the input field
+        const amountInput = document.getElementById(`amount-${scheduleId}`);
+        const currentAmount = amountInput ? parseFloat(amountInput.value) : 0;
+        
+        // Store schedule ID for form submission
+        window.currentScheduleId = scheduleId;
+        
+        // Populate modal form
+        document.getElementById('currentAmount').textContent = '$' + currentAmount.toFixed(2);
+        document.getElementById('adjustedAmount').value = currentAmount.toFixed(2);
+        document.getElementById('receivedDate').value = new Date().toISOString().split('T')[0]; // Today's date
+        document.getElementById('invoiceNumber').value = '';
+        
+        // Show modal
+        document.getElementById('postModal').style.display = 'flex';
+    }
+    
+    function getCSRFToken() {
+        // Get CSRF token from cookies
+        const name = 'csrftoken';
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Handle form submission
+    document.getElementById('postForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const postData = {
+            schedule_id: window.currentScheduleId,
+            received_date: formData.get('receivedDate'),
+            invoice_number: formData.get('invoiceNumber') || '',
+            adjusted_amount: formData.get('adjustedAmount')
+        };
+        
+        // Send POST request
+        fetch('{% url "post_interest_schedule" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify(postData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message || 'Schedule posted successfully!');
+                closePostModal();
+                // Refresh the page to show updated data
+                window.location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'Failed to post schedule'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error posting schedule. Please try again.');
+        });
+    });
+});
+
+function closePostModal() {
+    document.getElementById('postModal').style.display = 'none';
+    window.currentScheduleId = null;
+}
+
+// Close modal when clicking outside of it
+window.onclick = function(event) {
+    const modal = document.getElementById('postModal');
+    if (event.target == modal) {
+        closePostModal();
+    }
+}
+</script>
+
+{% endblock %}

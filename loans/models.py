@@ -118,6 +118,23 @@ class LoanCard(models.Model):
         """Monthly interest for first wired amount"""
         return (self.first_wired_amount * self.initial_interest_rate) / 12
     
+    def get_total_extension_fees(self):
+        from django.db.models import Sum
+        total = self.extensions.aggregate(total=Sum('extension_fee'))['total']
+        return total or Decimal('0')
+    
+    def calculate_monthly_interest(self, for_date):
+        """Calculate interest for a specific month"""
+        # Base interest from advanced loan
+        base = self.advanced_loan_amount * Decimal(str(self.initial_interest_rate)) / 12
+        
+        # Add interest from each additional draw that exists before this date
+        for draw in self.additional_draws.filter(draw_date__lte=for_date):
+            draw_interest = draw.amount * Decimal(str(draw.interest_rate)) / 12
+            base += draw_interest
+        
+        return base.quantize(Decimal('0.01'))
+    
     def __str__(self):
         return f"{self.card_number} - {self.borrower.name}"
     
@@ -193,3 +210,83 @@ class InterestPayment(models.Model):
     
     class Meta:
         ordering = ['charge_date']
+
+
+class LoanExtension(models.Model):
+    loan_card = models.ForeignKey(LoanCard, on_delete=models.CASCADE, related_name='extensions')
+    extension_months = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(24)])
+    extension_fee = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
+    has_interest = models.BooleanField(default=True)
+    interest_rate = models.DecimalField(max_digits=5, decimal_places=4, null=True, blank=True)
+    reason = models.TextField(blank=True)
+    created_date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Extension for {self.loan_card.card_number}"
+
+    class Meta:
+        ordering = ['created_date']
+
+
+class InterestSchedule(models.Model):
+    """Monthly interest payment schedule for loan cards"""
+    PERIOD_TYPE_CHOICES = [
+        ('daily', 'Daily'),
+        ('monthly', 'Monthly'),
+    ]
+    
+    loan_card = models.ForeignKey(LoanCard, on_delete=models.CASCADE, related_name='interest_schedules')
+    period_number = models.IntegerField(
+        help_text="0 for daily, 1,2,3... for monthly periods"
+    )
+    period_type = models.CharField(max_length=10, choices=PERIOD_TYPE_CHOICES)
+    charge_date = models.DateField()
+    calculated_amount = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2,
+        help_text="Auto-calculated interest amount"
+    )
+    adjusted_amount = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2,
+        blank=True, 
+        null=True,
+        help_text="Manual adjustments to calculated amount"
+    )
+    is_posted = models.BooleanField(default=False)
+    received_date = models.DateField(blank=True, null=True)
+    invoice_number = models.CharField(
+        max_length=100, 
+        blank=True, 
+        null=True,
+        help_text="QuickBooks Online invoice number"
+    )
+    posted_at = models.DateTimeField(blank=True, null=True)
+    posted_by = models.CharField(max_length=100, blank=True, null=True)
+    
+    @property
+    def effective_amount(self):
+        """Return adjusted amount if set, otherwise calculated amount"""
+        return self.adjusted_amount if self.adjusted_amount is not None else self.calculated_amount
+    
+    def clean(self):
+        """Validate that posted records cannot be modified"""
+        if self.pk:  # Only check for existing records
+            try:
+                old_instance = InterestSchedule.objects.get(pk=self.pk)
+                if old_instance.is_posted and old_instance != self:
+                    raise ValidationError("Posted interest schedule records cannot be modified.")
+            except InterestSchedule.DoesNotExist:
+                pass  # New record, no validation needed
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        period_display = f"Period {self.period_number}" if self.period_type == 'monthly' else "Daily"
+        return f"{self.loan_card.card_number} - {period_display} - ${self.effective_amount}"
+    
+    class Meta:
+        ordering = ['loan_card', 'charge_date', 'period_number']
+        unique_together = ['loan_card', 'period_type', 'period_number']

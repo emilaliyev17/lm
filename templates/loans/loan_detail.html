@@ -102,6 +102,41 @@
 </div>
 {% endif %}
 
+<!-- Interest Schedule Section -->
+<div class="detail-card" style="margin-top: 2rem;">
+    <h3>Interest Payment Schedule</h3>
+    <div style="margin-bottom: 1rem;">
+        <p>Monthly interest payments and invoicing</p>
+        <table style="width: 100%;">
+            <tr>
+                <td><strong>Total Periods:</strong></td>
+                <td>{{ loan.interest_schedules.count }}</td>
+                <td><strong>Posted:</strong></td>
+                <td>
+                    {% regroup loan.interest_schedules.all by is_posted as posted_groups %}
+                    {% for group in posted_groups %}
+                        {% if group.grouper %}{{ group.list|length }}{% endif %}
+                    {% endfor %}
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Monthly Interest:</strong></td>
+                <td>${{ loan.get_monthly_interest_for_initial|floatformat:2|intcomma }}</td>
+                <td><strong>Pending:</strong></td>
+                <td>
+                    {% regroup loan.interest_schedules.all by is_posted as posted_groups %}
+                    {% for group in posted_groups %}
+                        {% if not group.grouper %}{{ group.list|length }}{% endif %}
+                    {% endfor %}
+                </td>
+            </tr>
+        </table>
+    </div>
+    <a href="{% url 'interest_schedule' loan.card_number %}" class="btn btn-info">
+        View Full Schedule →
+    </a>
+</div>
+
 <div style="margin-top: 2rem;">
     <a href="{% url 'add_draw' loan.card_number %}" class="btn btn-success" style="margin-right: 1rem;">+ Add Draw</a>
     <a href="{% url 'add_extension' loan.card_number %}" class="btn btn-warning" style="margin-left: 0.5rem;">+ Add Extension</a>
