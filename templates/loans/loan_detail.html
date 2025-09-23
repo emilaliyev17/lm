@@ -24,7 +24,6 @@
     <div class="detail-card">
         <h3>Checkpoint Validation</h3>
         <div class="formula">
-            J14 + J22 - J13 = J23<br>
             ${{ loan.first_wired_amount }} + ${{ loan.total_settlement_charges }} - ${{ loan.advanced_loan_amount }} = 
             {% if checkpoint_valid %}
                 <span class="checkpoint-valid">${{ checkpoint|floatformat:2|intcomma }} ✓</span>
@@ -71,8 +70,39 @@
     </div>
 </div>
 
+<!-- Loan Extensions -->
+{% if loan.extensions.exists %}
+<div class="detail-card" style="margin-top: 2rem;">
+    <h3>Loan Extensions</h3>
+    <table>
+        <tr>
+            <th>Extension</th>
+            <th>Period</th>
+            <th>Fee</th>
+            <th>Interest</th>
+            <th>Date Added</th>
+        </tr>
+        {% for extension in loan.extensions.all %}
+        <tr>
+            <td>Extension #{{ forloop.counter }}</td>
+            <td>{{ extension.extension_months }} months</td>
+            <td>${{ extension.extension_fee|floatformat:2|intcomma }}</td>
+            <td>{% if extension.has_interest %}{% widthratio extension.interest_rate 1 100 %}%{% else %}No{% endif %}</td>
+            <td>{{ extension.created_date|date:"M d, Y" }}</td>
+        </tr>
+        {% endfor %}
+        <tr style="font-weight: bold; border-top: 2px solid #ddd;">
+            <td colspan="2">Total Extension Fees</td>
+            <td>${{ loan.get_total_extension_fees|floatformat:2|intcomma }}</td>
+            <td colspan="2"></td>
+        </tr>
+    </table>
+</div>
+{% endif %}
+
 <div style="margin-top: 2rem;">
     <a href="{% url 'add_draw' loan.card_number %}" class="btn btn-success" style="margin-right: 1rem;">+ Add Draw</a>
+    <a href="{% url 'add_extension' loan.card_number %}" class="btn btn-warning" style="margin-left: 0.5rem;">+ Add Extension</a>
     <a href="/api/loans/" class="btn">← Back to List</a>
 </div>
 {% endblock %}
