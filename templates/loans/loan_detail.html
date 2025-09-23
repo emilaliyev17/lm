@@ -16,7 +16,7 @@
             <div>
                 <strong>Settlement Charges:</strong> ${{ loan.total_settlement_charges|floatformat:2|intcomma }}<br>
                 <strong>Total Funded:</strong> ${{ total_funded|floatformat:2|intcomma }}<br>
-                <strong>Funded Date:</strong> {{ loan.first_loan_date|date:"M d, Y" }}
+                <strong>Funded Date:</strong> {{ loan.first_loan_date|date:"n/j/y" }}
             </div>
         </div>
     </div>
@@ -52,19 +52,21 @@
             <tr>
                 <td><strong>Draw #0 (Advanced Loan)</strong></td>
                 <td style="text-align: right;">${{ loan.advanced_loan_amount|floatformat:2|intcomma }}</td>
-                <td style="text-align: right;">{{ loan.first_loan_date|date:"M d, Y" }}</td>
+                <td style="text-align: right;">{{ loan.first_loan_date|date:"n/j/y" }}</td>
+                <td style="text-align: right;">{% widthratio loan.initial_interest_rate 1 100 %}%</td>
             </tr>
             {% for draw in loan.additional_draws.all %}
             <tr>
-                <td><strong>Draw #{{ draw.draw_number|add:-1 }}</strong></td>
+                <td><strong>Draw #{{ draw.draw_number|add:"-1" }}</strong></td>
                 <td style="text-align: right;">${{ draw.amount|floatformat:2|intcomma }}</td>
-                <td style="text-align: right;">{{ draw.draw_date|date:"M d, Y" }}</td>
+                <td style="text-align: right;">{{ draw.draw_date|date:"n/j/y" }}</td>
+                <td style="text-align: right;">{% widthratio draw.interest_rate 1 100 %}%</td>
             </tr>
             {% endfor %}
             <tr style="border-top: 2px solid #ddd; font-weight: bold;">
                 <td>Total Funded</td>
                 <td style="text-align: right;">${{ total_funded|floatformat:2|intcomma }}</td>
-                <td></td>
+                <td colspan="2"></td>
             </tr>
         </table>
     </div>
@@ -88,7 +90,7 @@
             <td>{{ extension.extension_months }} months</td>
             <td>${{ extension.extension_fee|floatformat:2|intcomma }}</td>
             <td>{% if extension.has_interest %}{% widthratio extension.interest_rate 1 100 %}%{% else %}No{% endif %}</td>
-            <td>{{ extension.created_date|date:"M d, Y" }}</td>
+            <td>{{ extension.created_date|date:"n/j/y" }}</td>
         </tr>
         {% endfor %}
         <tr style="font-weight: bold; border-top: 2px solid #ddd;">

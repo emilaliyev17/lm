@@ -45,11 +45,13 @@ loan-management-system/
 4. **settlement_charges** - Individual charges per loan
 5. **draws** - Additional funding after loan creation
 6. **interest_payments** - Payment tracking
+7. **loan_extensions** - Loan period extensions with fees (NEW)
 
 ### Critical Relationships
 - LoanCard → Borrower (many-to-one)
 - LoanCard → SettlementCharge (one-to-many)
 - LoanCard → Draw (one-to-many)
+- LoanCard → LoanExtension (one-to-many) ← NEW
 - SettlementCharge → SettlementChargeType (many-to-one)
 
 ## TECHNICAL STACK
@@ -73,6 +75,112 @@ def calculate_checkpoint(self):
 def get_total_funded_amount(self):
     additional_draws_total = self.additional_draws.aggregate(total=Sum('amount'))['total'] or Decimal('0')
     return self.advanced_loan_amount + additional_draws_total  # NOT first_wired_amount!
+```
+
+## RECENT UPDATES & ENHANCEMENTS
+
+### Loan Extensions System (September 2024)
+- **New Model**: `LoanExtension` added to track loan period extensions
+- **Database Migration**: `0002_loanextension.py` created
+- **Key Features**:
+  - Extension period (months)
+  - Extension fee tracking
+  - Optional interest rate changes
+  - Automatic date tracking
+  - Total extension fees calculation
+
+### Enhanced Loan Detail Template (`loan_detail.html`)
+
+#### 1. Loan Extensions Section
+- **Location**: Added between Funding Information and action buttons
+- **Conditional Display**: Only shows if `loan.extensions.exists`
+- **Features**:
+  - Extension numbering with `{{ forloop.counter }}`
+  - Period display in months
+  - Fee formatting with currency and commas
+  - Interest rate handling (shows "No" if no interest)
+  - Creation date display
+  - **Total Extension Fees** summary row
+
+#### 2. Template Tag Improvements
+- **Interest Rate Calculation**: Replaced `{{ extension.interest_rate|mul:100|floatformat:1 }}%` with `{% widthratio extension.interest_rate 1 100 %}%`
+- **Reason**: Better Django compatibility, avoids custom filter dependencies
+
+#### 3. Checkpoint Validation Display
+- **Simplified Interface**: Removed technical reference "J14 + J22 - J13 = J23"
+- **Clean Display**: Now shows only the actual calculation with values
+- **User-Friendly**: Less confusing for non-technical users
+
+#### 4. Date Format Standardization
+- **Consistent Format**: Changed all date displays from `|date:"M d, Y"` to `|date:"n/j/y"`
+- **Compact Display**: Dates now show as "1/1/25" instead of "Jan 01, 2025"
+- **Applied To**: Funded dates, draw dates, and extension creation dates
+
+#### 5. Enhanced Funding Information Table
+- **New Column**: Added interest rate column to Funding Information table
+- **Advanced Loan Rate**: Shows `loan.initial_interest_rate` with widthratio
+- **Draw-Specific Rates**: Each additional draw shows its own interest rate
+- **Consistent Formatting**: All rates display as percentages using widthratio template tag
+
+### Template Structure Updates
+
+#### Enhanced Funding Information Table
+```html
+<!-- loan_detail.html - Updated Funding Table with Interest Rates -->
+<table>
+    <tr>
+        <td><strong>Draw #0 (Advanced Loan)</strong></td>
+        <td style="text-align: right;">${{ loan.advanced_loan_amount|floatformat:2|intcomma }}</td>
+        <td style="text-align: right;">{{ loan.first_loan_date|date:"n/j/y" }}</td>
+        <td style="text-align: right;">{% widthratio loan.initial_interest_rate 1 100 %}%</td>
+    </tr>
+    {% for draw in loan.additional_draws.all %}
+    <tr>
+        <td><strong>Draw #{{ draw.draw_number|add:"-1" }}</strong></td>
+        <td style="text-align: right;">${{ draw.amount|floatformat:2|intcomma }}</td>
+        <td style="text-align: right;">{{ draw.draw_date|date:"n/j/y" }}</td>
+        <td style="text-align: right;">{% widthratio draw.interest_rate 1 100 %}%</td>
+    </tr>
+    {% endfor %}
+    <tr style="border-top: 2px solid #ddd; font-weight: bold;">
+        <td>Total Funded</td>
+        <td style="text-align: right;">${{ total_funded|floatformat:2|intcomma }}</td>
+        <td colspan="2"></td>
+    </tr>
+</table>
+```
+
+#### Loan Extensions Section
+```html
+<!-- loan_detail.html - New Extension Section -->
+{% if loan.extensions.exists %}
+<div class="detail-card" style="margin-top: 2rem;">
+    <h3>Loan Extensions</h3>
+    <table>
+        <tr>
+            <th>Extension</th>
+            <th>Period</th>
+            <th>Fee</th>
+            <th>Interest</th>
+            <th>Date Added</th>
+        </tr>
+        {% for extension in loan.extensions.all %}
+        <tr>
+            <td>Extension #{{ forloop.counter }}</td>
+            <td>{{ extension.extension_months }} months</td>
+            <td>${{ extension.extension_fee|floatformat:2|intcomma }}</td>
+            <td>{% if extension.has_interest %}{% widthratio extension.interest_rate 1 100 %}%{% else %}No{% endif %}</td>
+            <td>{{ extension.created_date|date:"n/j/y" }}</td>
+        </tr>
+        {% endfor %}
+        <tr style="font-weight: bold; border-top: 2px solid #ddd;">
+            <td colspan="2">Total Extension Fees</td>
+            <td>${{ loan.get_total_extension_fees|floatformat:2|intcomma }}</td>
+            <td colspan="2"></td>
+        </tr>
+    </table>
+</div>
+{% endif %}
 ```
 
 ## COMMON MISTAKES TO AVOID
@@ -103,6 +211,7 @@ def get_total_funded_amount(self):
 /api/loans/create/             # Create new loan
 /api/loans/<card_number>/      # Loan detail view
 /api/loans/<card_number>/add-draw/  # Add additional draw
+/api/loans/<card_number>/add-extension/  # Add loan extension (NEW)
 /api/borrowers/                # Borrower list
 /api/borrowers/create/         # Create borrower
 /admin/                        # Django admin panel
@@ -110,9 +219,10 @@ def get_total_funded_amount(self):
 
 ## VIEW FUNCTIONS
 - **loan_list** - Dashboard with all loans
-- **loan_detail** - Specific loan details
+- **loan_detail** - Specific loan details with extensions display
 - **create_loan** - Form with checkpoint validation
 - **add_draw** - Additional funding after creation
+- **add_extension** - Extend loan period with fees (NEW)
 - **borrower_list** - All borrowers
 - **create_borrower** - New borrower form
 
@@ -153,6 +263,10 @@ DATABASE_PORT=5432
 - [ ] Verify Total Funded updates correctly
 - [ ] Check interest rate displays as percentage
 - [ ] Ensure Settlement Charges can't be edited
+- [ ] Add loan extension and verify display on detail page (NEW)
+- [ ] Test extension interest rate calculation with widthratio (NEW)
+- [ ] Verify total extension fees calculation (NEW)
+- [ ] Check conditional display of extensions section (NEW)
 
 ## KNOWN LIMITATIONS
 - No user authentication system (uses Django admin)
@@ -192,5 +306,5 @@ After reading this document, you should understand:
 If you have questions after reading this, **DO NOT PROCEED**. Consult with the team first.
 
 ---
-**Last Updated**: September 2024  
-**Version**: 1.0.0
+**Last Updated**: September 23, 2025  
+**Version**: 1.2.0 - Enhanced UI with compact dates and funding table interest rates
