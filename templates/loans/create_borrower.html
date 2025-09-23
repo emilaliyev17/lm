@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Add New Borrower</h2>
+<form method="POST" style="max-width: 600px;">
+    {% csrf_token %}
+    <div class="detail-card">
+        <div style="margin-bottom: 1rem;">
+            <label>Name*</label>
+            <input type="text" name="name" required>
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <label>Email</label>
+            <input type="email" name="email">
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <label>Phone</label>
+            <input type="tel" name="phone">
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <label>Address</label>
+            <textarea name="address" rows="3"></textarea>
+        </div>
+    </div>
+    <div style="display: flex; gap: 1rem;">
+        <a href="{% url 'borrower_list' %}" class="btn" style="background: #ccc;">Cancel</a>
+        <button type="submit" class="btn btn-primary">Create Borrower</button>
+    </div>
+</form>
+<style>
+input, textarea { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; }
+</style>
+{% endblock %}

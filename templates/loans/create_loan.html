@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Create New Loan Card</h2>
+
+<div id="checkpointDisplay" style="background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 2px solid #ddd;">
+    <h3 style="margin-top: 0;">Checkpoint Validation (J23)</h3>
+    <div style="font-family: monospace; font-size: 1.2rem; text-align: center; margin: 1rem 0;">
+        <span id="firstWiredDisplay">$0.00</span> + 
+        <span id="settlementDisplay">$0.00</span> - 
+        <span id="advancedDisplay">$0.00</span> = 
+        <span id="checkpointValue" style="font-weight: bold; font-size: 1.4rem;">$0.00</span>
+    </div>
+    <div id="checkpointMessage" style="text-align: center; margin-top: 0.5rem; font-weight: bold;"></div>
+</div>
+
+{% if checkpoint_error %}
+<div style="background: #fee; padding: 1rem; border-radius: 5px; margin-bottom: 2rem; color: #c00;">
+    <strong>Error:</strong> {{ checkpoint_error }}
+</div>
+{% endif %}
+
+<form method="POST" id="loanForm">
+    {% csrf_token %}
+    
+    <div class="detail-card" style="margin-bottom: 2rem;">
+        <h3>Basic Information</h3>
+        
+        <div style="margin-bottom: 1rem;">
+            <label>Card Number*</label>
+            <input type="text" name="card_number" required placeholder="e.g. 1122-24-05">
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+            <label>Borrower*</label>
+            <select name="borrower" required>
+                <option value="">Select borrower...</option>
+                {% for borrower in borrowers %}
+                <option value="{{ borrower.id }}">{{ borrower.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+            <label>Property Address</label>
+            <textarea name="property_address" rows="2"></textarea>
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+            <label>First Loan Date*</label>
+            <input type="date" name="first_loan_date" required>
+        </div>
+    </div>
+    
+    <div class="detail-card" style="margin-bottom: 2rem;">
+        <h3>Loan Amounts</h3>
+        
+        <div style="margin-bottom: 1rem;">
+            <label>Advanced Loan Amount (J13)*</label>
+            <input type="number" name="advanced_loan_amount" id="advancedLoan" required step="0.01">
+            <small style="color: #666;">Total debt borrower signs for</small>
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+            <label>First Wired Amount (J14)*</label>
+            <input type="number" name="first_wired_amount" id="firstWired" required step="0.01">
+            <small style="color: #666;">Money actually sent to borrower</small>
+        </div>
+    </div>
+    
+    <div class="detail-card" style="margin-bottom: 2rem;">
+        <h3>Settlement Charges (J22)</h3>
+        
+        {% for charge_type in charge_types %}
+        <div style="margin-bottom: 1rem;">
+            <label>{{ charge_type.name }}</label>
+            <input type="number" name="charge_{{ charge_type.id }}" class="settlement-charge" step="0.01" placeholder="${{ charge_type.default_amount }}">
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div style="display: flex; gap: 1rem;">
+        <a href="{% url 'loan_list' %}" class="btn" style="background: #ccc;">Cancel</a>
+        <button type="submit" id="submitBtn" class="btn btn-primary">Create Loan Card</button>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('loanForm');
+    const advancedInput = document.getElementById('advancedLoan');
+    const firstWiredInput = document.getElementById('firstWired');
+    const settlementInputs = document.querySelectorAll('.settlement-charge');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    const checkpointDisplay = document.getElementById('checkpointDisplay');
+    const advancedDisplay = document.getElementById('advancedDisplay');
+    const firstWiredDisplay = document.getElementById('firstWiredDisplay');
+    const settlementDisplay = document.getElementById('settlementDisplay');
+    const checkpointValue = document.getElementById('checkpointValue');
+    const checkpointMessage = document.getElementById('checkpointMessage');
+    
+    function calculateCheckpoint() {
+        const advanced = parseFloat(advancedInput.value) || 0;
+        const firstWired = parseFloat(firstWiredInput.value) || 0;
+        
+        let settlementTotal = 0;
+        settlementInputs.forEach(input => {
+            settlementTotal += parseFloat(input.value) || 0;
+        });
+        
+        const checkpoint = firstWired + settlementTotal - advanced;
+        
+        // Update display
+        advancedDisplay.textContent = '$' + advanced.toFixed(2);
+        firstWiredDisplay.textContent = '$' + firstWired.toFixed(2);
+        settlementDisplay.textContent = '$' + settlementTotal.toFixed(2);
+        checkpointValue.textContent = '$' + checkpoint.toFixed(2);
+        
+        // Update styling based on checkpoint
+        if (Math.abs(checkpoint) < 0.01) {
+            checkpointDisplay.style.borderColor = '#27ae60';
+            checkpointValue.style.color = '#27ae60';
+            checkpointMessage.textContent = '✓ Checkpoint Valid - Ready to submit';
+            checkpointMessage.style.color = '#27ae60';
+            submitBtn.disabled = false;
+        } else {
+            checkpointDisplay.style.borderColor = '#e74c3c';
+            checkpointValue.style.color = '#e74c3c';
+            checkpointMessage.textContent = '✗ Checkpoint must equal $0.00';
+            checkpointMessage.style.color = '#e74c3c';
+            submitBtn.disabled = true;
+        }
+    }
+    
+    // Add event listeners
+    advancedInput.addEventListener('input', calculateCheckpoint);
+    firstWiredInput.addEventListener('input', calculateCheckpoint);
+    settlementInputs.forEach(input => {
+        input.addEventListener('input', calculateCheckpoint);
+    });
+    
+    // Initial calculation
+    calculateCheckpoint();
+});
+</script>
+
+<style>
+input, select, textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+#submitBtn:disabled {
+    background: #999;
+    cursor: not-allowed;
+}
+</style>
+{% endblock %}

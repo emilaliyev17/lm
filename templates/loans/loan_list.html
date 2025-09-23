@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h2 style="margin: 0;">Loan Dashboard</h2>
+    <a href="{% url 'create_loan' %}" class="btn btn-primary">+ New Loan Card</a>
+</div>
+
+<div class="stats">
+    <div class="stat-card">
+        <div class="stat-value">{{ total_loans }}</div>
+        <div class="stat-label">Total Loans</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ active_loans }}</div>
+        <div class="stat-label">Active Loans</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">${{ total_portfolio|floatformat:0|default:"0" }}</div>
+        <div class="stat-label">Total Portfolio</div>
+    </div>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Card Number</th>
+            <th>Borrower</th>
+            <th>Advanced Loan</th>
+            <th>First Wired</th>
+            <th>Rate</th>
+            <th>Settlement</th>
+            <th>Checkpoint</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for loan in loans %}
+        <tr>
+            <td><strong>{{ loan.card_number }}</strong></td>
+            <td>{{ loan.borrower }}</td>
+            <td>${{ loan.advanced_loan|floatformat:0 }}</td>
+            <td>${{ loan.first_wired|floatformat:0 }}</td>
+            <td>{{ loan.interest_rate_display|floatformat:1 }}%</td>
+            <td>${{ loan.settlement|floatformat:0 }}</td>
+            <td>
+                {% if loan.checkpoint_valid %}
+                    <span class="checkpoint-valid">✓ ${{ loan.checkpoint|floatformat:2 }}</span>
+                {% else %}
+                    <span class="checkpoint-invalid">✗ ${{ loan.checkpoint|floatformat:2 }}</span>
+                {% endif %}
+            </td>
+            <td><span class="status-active">{{ loan.status }}</span></td>
+            <td><a href="/api/loans/{{ loan.card_number }}/" class="btn">View</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

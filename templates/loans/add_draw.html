@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Add Draw to Loan: {{ loan.card_number }}</h2>
+<p style="color: #666;">Borrower: {{ loan.borrower.name }}</p>
+
+<div class="detail-card" style="margin-bottom: 2rem;">
+    <h3>Current Loan Status</h3>
+    <p><strong>Advanced Loan Amount:</strong> ${{ loan.advanced_loan_amount|floatformat:2 }}</p>
+    <p><strong>Current Total Funded:</strong> ${{ total_funded_before|floatformat:2 }}</p>
+    <p><strong>Next Draw Number:</strong> #{{ next_draw_number }}</p>
+</div>
+
+{% if existing_draws %}
+<div class="detail-card" style="margin-bottom: 2rem;">
+    <h3>Existing Draws</h3>
+    <table>
+        <tr>
+            <th>Draw #</th>
+            <th>Date</th>
+            <th>Amount</th>
+            <th>Rate</th>
+        </tr>
+        {% for draw in existing_draws %}
+        <tr>
+            <td>#{{ draw.draw_number }}</td>
+            <td>{{ draw.draw_date }}</td>
+            <td>${{ draw.amount|floatformat:2 }}</td>
+            <td>{{ draw.interest_rate|floatformat:2 }}%</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endif %}
+
+{% if error %}
+<div style="background: #fee; padding: 1rem; border-radius: 5px; margin-bottom: 2rem; color: #c00;">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+<form method="POST" style="max-width: 600px;">
+    {% csrf_token %}
+    
+    <div class="detail-card">
+        <h3>New Draw Details</h3>
+        
+        <div style="margin-bottom: 1rem;">
+            <label>Draw Date*</label>
+            <input type="date" name="draw_date" required>
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+            <label>Draw Amount*</label>
+            <input type="number" name="amount" step="0.01" required>
+            <small style="color: #666;">Additional funding amount</small>
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+            <label>Interest Rate*</label>
+            <input type="number" name="interest_rate" step="0.0001" value="0.13" required>
+            <small style="color: #666;">Annual rate (0.13 = 13%)</small>
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+            <label>Invoice Number</label>
+            <input type="text" name="invoice_number" placeholder="e.g. INV-2025-001">
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+            <label>Notes</label>
+            <textarea name="notes" rows="2" placeholder="Optional notes about this draw"></textarea>
+        </div>
+    </div>
+    
+    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+        <a href="{% url 'loan_detail' loan.card_number %}" class="btn" style="background: #ccc;">Cancel</a>
+        <button type="submit" class="btn btn-primary">Add Draw #{{ next_draw_number }}</button>
+    </div>
+</form>
+
+<style>
+input, textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+</style>
+{% endblock %}

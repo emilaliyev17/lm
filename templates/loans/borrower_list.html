@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h2 style="margin: 0;">Borrowers</h2>
+    <a href="{% url 'create_borrower' %}" class="btn btn-primary">+ New Borrower</a>
+</div>
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Active Loans</th>
+    </tr>
+    {% for borrower in borrowers %}
+    <tr>
+        <td>{{ borrower.name }}</td>
+        <td>{{ borrower.email|default:"-" }}</td>
+        <td>{{ borrower.loan_count }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

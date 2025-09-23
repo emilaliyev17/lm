@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Loan Card: {{ loan.card_number }}</h2>
+<p style="color: #666; margin-bottom: 2rem;">Borrower: {{ loan.borrower.name }}</p>
+
+<div class="detail-grid">
+    <div class="detail-card">
+        <h3>Loan Amounts</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+            <div>
+                <strong>Advanced Loan (J13):</strong> ${{ loan.advanced_loan_amount|floatformat:2 }}<br>
+                <strong>First Wired (J14):</strong> ${{ loan.first_wired_amount|floatformat:2 }}<br>
+                <strong>Interest Rate:</strong> {{ interest_rate_display|floatformat:1 }}%
+            </div>
+            <div>
+                <strong>Settlement Charges (J22):</strong> ${{ loan.total_settlement_charges|floatformat:2 }}<br>
+                <strong>Total Funded:</strong> ${{ total_funded|floatformat:2 }}<br>
+                <strong>Funded Date:</strong> {{ loan.first_loan_date|date:"M d, Y" }}
+            </div>
+        </div>
+    </div>
+    
+    <div class="detail-card">
+        <h3>Checkpoint Validation</h3>
+        <div class="formula">
+            J14 + J22 - J13 = J23<br>
+            ${{ loan.first_wired_amount }} + ${{ loan.total_settlement_charges }} - ${{ loan.advanced_loan_amount }} = 
+            {% if checkpoint_valid %}
+                <span class="checkpoint-valid">${{ checkpoint|floatformat:2 }} ✓</span>
+            {% else %}
+                <span class="checkpoint-invalid">${{ checkpoint|floatformat:2 }} ✗</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div class="detail-card">
+        <h3>Settlement Charges</h3>
+        <table>
+            {% for charge in settlement_charges %}
+            <tr>
+                <td>{{ charge.charge_type.name }}</td>
+                <td style="text-align: right;">${{ charge.amount|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    <div class="detail-card" style="opacity: 0;">
+        <!-- Empty placeholder card for consistent grid layout -->
+    </div>
+</div>
+
+{% if additional_draws %}
+<div class="detail-card">
+    <h3>Additional Draws</h3>
+    <table>
+        <tr>
+            <th>Draw #</th>
+            <th>Date</th>
+            <th>Amount</th>
+            <th>Rate</th>
+            <th>Monthly Interest</th>
+        </tr>
+        {% for draw in additional_draws %}
+        <tr>
+            <td>{{ draw.draw_number }}</td>
+            <td>{{ draw.draw_date }}</td>
+            <td>${{ draw.amount|floatformat:2 }}</td>
+            <td>{% widthratio draw.interest_rate 1 100 %}%</td>
+            <td>${{ draw.monthly_interest|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endif %}
+
+<div style="margin-top: 2rem;">
+    <a href="{% url 'add_draw' loan.card_number %}" class="btn btn-success" style="margin-right: 1rem;">+ Add Draw</a>
+    <a href="/api/loans/" class="btn">← Back to List</a>
+</div>
+{% endblock %}
