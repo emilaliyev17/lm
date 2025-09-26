@@ -139,11 +139,14 @@ if os.environ.get('DJANGO_ENV') == 'production':
     DEBUG = False
     ALLOWED_HOSTS = ['.ondigitalocean.app', '.digitalocean.app', '*']
     
-    DATABASES['default'] = dj_database_url.parse(
-        os.environ.get('DATABASE_URL'),
-        conn_max_age=600
-    )
+    # Database from DATABASE_URL - только если она есть!
+    if os.environ.get('DATABASE_URL'):
+        DATABASES['default'] = dj_database_url.parse(
+            os.environ.get('DATABASE_URL'),
+            conn_max_age=600
+        )
     
+    # Static files with Whitenoise
     MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
     STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
     
