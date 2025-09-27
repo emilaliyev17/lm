@@ -62,7 +62,7 @@ class LoanCardAdmin(admin.ModelAdmin):
             'fields': ('card_number', 'borrower', 'property_address', 'status')
         }),
         ('Loan Amounts', {
-            'fields': ('advanced_loan_amount', 'first_wired_amount', 
+            'fields': ('advanced_loan_amount', 'advanced_loan_invoice', 'first_wired_amount', 
                       'total_settlement_charges', 'initial_interest_rate')
         }),
         ('Dates', {

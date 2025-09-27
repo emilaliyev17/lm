@@ -28,6 +28,7 @@
             <th>Borrower</th>
             <th>Advanced Loan</th>
             <th>First Wired</th>
+            <th>Invoice #</th>
             <th>Rate</th>
             <th>Settlement</th>
             <th>Checkpoint</th>
@@ -42,6 +43,7 @@
             <td>{{ loan.borrower }}</td>
             <td>${{ loan.advanced_loan|floatformat:0|intcomma }}</td>
             <td>${{ loan.first_wired|floatformat:0|intcomma }}</td>
+            <td>{% if loan.advanced_loan_invoice %}{{ loan.advanced_loan_invoice }}{% else %}—{% endif %}</td>
             <td>{{ loan.interest_rate_display|floatformat:1 }}%</td>
             <td>${{ loan.settlement|floatformat:0|intcomma }}</td>
             <td>

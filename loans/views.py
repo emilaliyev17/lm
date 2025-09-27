@@ -35,6 +35,7 @@ def loan_list(request):
             'checkpoint_valid': abs(checkpoint) < Decimal('0.01'),
             'status': loan.get_status_display(),
             'interest_rate_display': loan.initial_interest_rate * 100,
+            'advanced_loan_invoice': loan.advanced_loan_invoice,
         })
     
     context = {
@@ -84,6 +85,7 @@ def api_loans(request):
             'card_number': loan.card_number,
             'borrower': loan.borrower.name,
             'advanced_loan_amount': str(loan.advanced_loan_amount),
+            'advanced_loan_invoice': loan.advanced_loan_invoice,
             'first_wired_amount': str(loan.first_wired_amount),
             'total_settlement_charges': str(loan.total_settlement_charges),
             'status': loan.status,
@@ -138,6 +140,7 @@ def api_loan_detail(request, card_number):
         },
         'property_address': loan.property_address,
         'advanced_loan_amount': str(loan.advanced_loan_amount),
+        'advanced_loan_invoice': loan.advanced_loan_invoice,
         'first_wired_amount': str(loan.first_wired_amount),
         'total_settlement_charges': str(loan.total_settlement_charges),
         'first_loan_date': loan.first_loan_date.isoformat(),
@@ -168,7 +171,9 @@ def create_loan(request):
         except:
             advanced = Decimal('0')
             first_wired = Decimal('0')
-        
+
+        advanced_invoice = (request.POST.get('advanced_loan_invoice', '') or '').strip()
+
         # Calculate settlement charges total
         settlement_total = Decimal('0')
         charge_types = list(SettlementChargeType.objects.filter(is_active=True))
@@ -195,6 +200,7 @@ def create_loan(request):
                 borrower_id=request.POST.get('borrower'),
                 property_address=request.POST.get('property_address', ''),
                 advanced_loan_amount=advanced,
+                advanced_loan_invoice=advanced_invoice or None,
                 first_wired_amount=first_wired,
                 total_settlement_charges=settlement_total,  # Set it directly
                 first_loan_date=request.POST.get('first_loan_date'),

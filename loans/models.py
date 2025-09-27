@@ -61,6 +61,12 @@ class LoanCard(models.Model):
         validators=[MinValueValidator(Decimal('0.01'))],
         help_text="Total debt amount that borrower signed for (J13)"
     )
+    advanced_loan_invoice = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Invoice or document number for main loan"
+    )
     
     first_wired_amount = models.DecimalField(
         max_digits=12, 

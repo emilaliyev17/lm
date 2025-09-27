@@ -57,8 +57,16 @@
         
         <div style="margin-bottom: 1rem;">
             <label>Advanced Loan Amount*</label>
-            <input type="number" name="advanced_loan_amount" id="advancedLoan" required step="0.01">
-            <small style="color: #666;">Total debt borrower signs for</small>
+            <div class="settlement-charge-inputs">
+                <div>
+                    <input type="number" name="advanced_loan_amount" id="advancedLoan" required step="0.01">
+                    <small style="color: #666;">Total debt borrower signs for</small>
+                </div>
+                <div>
+                    <input type="text" name="advanced_loan_invoice" placeholder="Invoice #">
+                    <small style="color: #666;">Invoice # (optional)</small>
+                </div>
+            </div>
         </div>
         
         <div style="margin-bottom: 1rem;">

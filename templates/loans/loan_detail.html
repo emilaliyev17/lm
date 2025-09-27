@@ -10,6 +10,7 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
             <div>
                 <strong>Advanced Loan:</strong> ${{ loan.advanced_loan_amount|floatformat:2|intcomma }}<br>
+                <strong>Invoice #:</strong> {% if loan.advanced_loan_invoice %}{{ loan.advanced_loan_invoice }}{% else %}—{% endif %}<br>
                 <strong>First Wired:</strong> ${{ loan.first_wired_amount|floatformat:2|intcomma }}<br>
                 <strong>Interest Rate:</strong> {{ interest_rate_display|floatformat:1 }}%
             </div>
