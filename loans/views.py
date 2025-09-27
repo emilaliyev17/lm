@@ -4,6 +4,7 @@ from django.db.models import Sum, Count
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
+from django.contrib.auth.decorators import login_required
 from decimal import Decimal
 from datetime import datetime, date, timedelta
 import calendar
@@ -155,6 +156,7 @@ def api_loan_detail(request, card_number):
     return JsonResponse(data)
 
 
+@login_required
 def create_loan(request):
     """Simple form to create new loan card"""
     if request.method == 'POST':
@@ -232,6 +234,7 @@ def create_loan(request):
     return render(request, 'loans/create_loan.html', context)
 
 
+@login_required
 def add_draw(request, card_number):
     """Add additional draw to existing loan"""
     loan = get_object_or_404(LoanCard, card_number=card_number)
@@ -286,6 +289,7 @@ def borrower_list(request):
     }
     return render(request, 'loans/borrower_list.html', context)
 
+@login_required
 def create_borrower(request):
     if request.method == 'POST':
         borrower = Borrower.objects.create(
@@ -297,6 +301,7 @@ def create_borrower(request):
         return redirect('borrower_list')
     return render(request, 'loans/create_borrower.html')
 
+@login_required
 def add_extension(request, card_number):
     loan = get_object_or_404(LoanCard, card_number=card_number)
     
@@ -326,6 +331,7 @@ def add_extension(request, card_number):
     return render(request, 'loans/add_extension.html', context)
 
 
+@login_required
 def interest_schedule(request, card_number):
     """Display and manage interest payment schedule"""
     loan = get_object_or_404(LoanCard, card_number=card_number)
@@ -349,6 +355,7 @@ def add_months(source_date, months):
     return date(year, month, day)
 
 
+@login_required
 def generate_interest_schedule(request, card_number):
     """Generate monthly interest payment schedule for a loan"""
     loan = get_object_or_404(LoanCard, card_number=card_number)
@@ -428,6 +435,7 @@ def generate_interest_schedule(request, card_number):
     return redirect('interest_schedule', card_number=card_number)
 
 
+@login_required
 @csrf_exempt
 def post_interest_schedule(request):
     """Handle posting of interest schedule records"""
