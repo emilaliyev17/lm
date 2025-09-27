@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.db.models import Sum, Count
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from decimal import Decimal, InvalidOperation
@@ -517,6 +517,40 @@ def update_charge_date(request, schedule_id):
             return JsonResponse({'success': True})
 
     return JsonResponse({'success': False})
+
+
+@login_required
+@require_POST
+def add_interest_invoice(request, card_number):
+    loan = get_object_or_404(LoanCard, card_number=card_number)
+
+    last_period = loan.interest_schedules.order_by('-period_number').first()
+    next_period = (last_period.period_number + 1) if last_period else 1
+
+    try:
+        schedule = InterestSchedule.objects.create(
+            loan_card=loan,
+            period_number=next_period,
+            period_type='monthly',
+            charge_date=request.POST.get('charge_date'),
+            calculated_amount=request.POST.get('amount', 0),
+            is_posted=False
+        )
+        return JsonResponse({'success': True, 'id': schedule.id})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+@require_http_methods(["DELETE"])
+def delete_interest_schedule(request, schedule_id):
+    schedule = get_object_or_404(InterestSchedule, id=schedule_id)
+
+    if schedule.is_posted:
+        return JsonResponse({'success': False, 'error': 'Cannot delete posted schedule'}, status=400)
+
+    schedule.delete()
+    return JsonResponse({'success': True})
 
 
 @login_required
