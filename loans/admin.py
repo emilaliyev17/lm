@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from decimal import Decimal
-from .models import Borrower, LoanCard, SettlementChargeType, SettlementCharge, Draw, InterestPayment
+from .models import Borrower, LoanCard, SettlementChargeType, SettlementCharge, Draw, InterestPayment, LoanStatus
 
 
 class SettlementChargeInline(admin.TabularInline):
@@ -59,7 +59,7 @@ class LoanCardAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('card_number', 'borrower', 'property_address', 'status')
+            'fields': ('card_number', 'borrower', 'property_address', 'status', 'dynamic_status')
         }),
         ('Loan Amounts', {
             'fields': ('advanced_loan_amount', 'advanced_loan_invoice', 'first_wired_amount', 
@@ -139,3 +139,10 @@ class InterestPaymentAdmin(admin.ModelAdmin):
             return format_html('<span style="color: green;">✓ Paid</span>')
         return format_html('<span style="color: orange;">⏳ Pending</span>')
     payment_status.short_description = 'Status'
+
+
+@admin.register(LoanStatus)
+class LoanStatusAdmin(admin.ModelAdmin):
+    list_display = ['name', 'code', 'color', 'is_active', 'order']
+    list_editable = ['color', 'is_active', 'order']
+    readonly_fields = ['created_at', 'updated_at']

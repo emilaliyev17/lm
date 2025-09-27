@@ -151,4 +151,28 @@
     <a href="{% url 'add_extension' loan.card_number %}" class="btn btn-warning" style="margin-left: 0.5rem;">+ Add Extension</a>
     <a href="/api/loans/" class="btn">← Back to List</a>
 </div>
+
+<div class="detail-card" style="margin-top: 2rem;">
+    <h3>Loan Status</h3>
+    <form method="post" action="{% url 'change_loan_status' loan.card_number %}" onsubmit="return confirm('Are you sure you want to update the loan status?');">
+        {% csrf_token %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: center;">
+            <div>
+                <strong>Current Status:</strong>
+                <span class="status-{{ effective_status_code }}" style="margin-left: 0.5rem;">{{ effective_status_display }}</span>
+            </div>
+            <div>
+                <label for="status-select"><strong>Change to:</strong></label>
+                <select id="status-select" name="status" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                    {% for status in available_statuses %}
+                        <option value="{{ status.code }}" {% if effective_status_code == status.code|lower %}selected{% endif %}>{{ status.code }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Update Status</button>
+            </div>
+        </div>
+    </form>
+</div>
 {% endblock %}

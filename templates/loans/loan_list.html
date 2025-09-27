@@ -53,7 +53,7 @@
                     <span class="checkpoint-invalid">✗ ${{ loan.checkpoint|floatformat:2|intcomma }}</span>
                 {% endif %}
             </td>
-            <td><span class="status-active">{{ loan.status }}</span></td>
+            <td><span class="status-{{ loan.status_code }}">{{ loan.status_display_code }}</span></td>
             <td><a href="/api/loans/{{ loan.card_number }}/" class="btn">View</a></td>
         </tr>
         {% endfor %}

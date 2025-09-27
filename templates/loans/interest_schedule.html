@@ -157,7 +157,12 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
             <div>
                 <strong>Card Number:</strong> {{ loan.card_number }}<br>
-                <strong>Status:</strong> {{ loan.get_status_display }}<br>
+                <strong>Status:</strong>
+                {% if loan.dynamic_status %}
+                    {{ loan.dynamic_status.code }}
+                {% else %}
+                    {{ loan.status }}
+                {% endif %}<br>
             </div>
             <div>
                 <strong>Interest Rate:</strong> {% widthratio loan.initial_interest_rate 1 100 %}%<br>

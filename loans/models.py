@@ -93,6 +93,7 @@ class LoanCard(models.Model):
     )
     
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='active')
+    dynamic_status = models.ForeignKey('LoanStatus', null=True, blank=True, on_delete=models.SET_NULL, related_name='loans')
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -302,3 +303,22 @@ class InterestSchedule(models.Model):
     class Meta:
         ordering = ['loan_card', 'charge_date', 'period_number']
         unique_together = ['loan_card', 'period_type', 'period_number']
+
+
+class LoanStatus(models.Model):
+    """Dynamic loan status configuration"""
+    code = models.CharField(max_length=20, unique=True, help_text="Internal code (e.g., 'active')")
+    name = models.CharField(max_length=50, help_text="Display name (e.g., 'Active')")
+    color = models.CharField(max_length=7, default='#95a5a6', help_text="Hex color for UI")
+    is_active = models.BooleanField(default=True, help_text="Is this status available for selection")
+    order = models.IntegerField(default=0, help_text="Display order in dropdowns")
+    can_delete = models.BooleanField(default=True, help_text="Protect core statuses from deletion")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['order', 'name']
+        verbose_name_plural = 'Loan Statuses'
+
+    def __str__(self):
+        return self.name
