@@ -51,6 +51,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'loan_system.middleware.RequireAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -161,3 +162,18 @@ if os.environ.get('DJANGO_ENV') == 'production':
     CSRF_COOKIE_SECURE = True
 else:
     STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+
+LOGIN_URL = '/admin/login/'
+LOGIN_REDIRECT_URL = '/api/loans/'
+LOGOUT_REDIRECT_URL = '/admin/login/'
+
+LOGIN_EXEMPT_URLS = [
+    '/admin/login/',
+    '/admin/logout/',
+]
+
+LOGIN_EXEMPT_PATH_PREFIXES = [
+    '/static/',
+    '/media/',
+]
