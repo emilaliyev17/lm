@@ -23,7 +23,7 @@
             <thead>
                 <tr>
                     <th>Period</th>
-                    <th>Charge Date</th>
+                    <th style="width: 150px;">Charge Date</th>
                     <th>Amount</th>
                     <th>Received Date</th>
                     <th>Invoice #</th>
@@ -41,7 +41,17 @@
                             Period {{ schedule.period_number }}
                         {% endif %}
                     </td>
-                    <td>{{ schedule.charge_date|date:"n/j/Y" }}</td>
+                    <td>
+                        {% if schedule.is_posted %}
+                            {{ schedule.charge_date|date:"n/j/Y" }}
+                        {% else %}
+                            <input type="date"
+                                   name="charge_date_{{ schedule.id }}"
+                                   value="{{ schedule.charge_date|date:'Y-m-d' }}"
+                                   class="form-control"
+                                   style="width: 140px; padding: 0.25rem; border: 1px solid #ddd; border-radius: 3px; text-align: right; margin-left: 3px;">
+                        {% endif %}
+                    </td>
                     <td>
                         {% if schedule.is_posted %}
                             <!-- Posted rows are read-only -->
@@ -415,6 +425,35 @@ window.onclick = function(event) {
         closePostModal();
     }
 }
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Listen for date changes
+    document.querySelectorAll('input[type="date"][name^="charge_date_"]').forEach(function(input) {
+        input.addEventListener('change', function() {
+            var scheduleId = this.name.replace('charge_date_', '');
+            var newDate = this.value;
+            
+            // Send update to server
+            fetch('/api/interest-schedule/' + scheduleId + '/update-date/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: 'charge_date=' + newDate
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    alert('Failed to update date');
+                    location.reload();
+                }
+            });
+        });
+    });
+});
 </script>
 
 {% endblock %}

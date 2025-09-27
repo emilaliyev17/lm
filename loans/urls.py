@@ -10,6 +10,7 @@ urlpatterns = [
     path('loans/<str:card_number>/add-extension/', views.add_extension, name='add_extension'),
     path('loans/<str:card_number>/interest-schedule/', views.interest_schedule, name='interest_schedule'),
     path('loans/<str:card_number>/generate-schedule/', views.generate_interest_schedule, name='generate_interest_schedule'),
+    path('interest-schedule/<int:schedule_id>/update-date/', views.update_charge_date, name='update_charge_date'),
     path('post-interest-schedule/', views.post_interest_schedule, name='post_interest_schedule'),
     path('loans/<str:card_number>/', views.loan_detail, name='loan_detail'),
     path('loans/<str:card_number>/edit-invoices/', views.edit_loan_invoices, name='edit_loan_invoices'),

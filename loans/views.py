@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.db.models import Sum, Count
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from decimal import Decimal, InvalidOperation
@@ -501,6 +502,21 @@ def post_interest_schedule(request):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Only POST method allowed'})
+
+
+@login_required
+@require_POST
+def update_charge_date(request, schedule_id):
+    schedule = get_object_or_404(InterestSchedule, id=schedule_id)
+
+    if not schedule.is_posted:
+        new_date = request.POST.get('charge_date')
+        if new_date:
+            schedule.charge_date = new_date
+            schedule.save()
+            return JsonResponse({'success': True})
+
+    return JsonResponse({'success': False})
 
 
 @login_required
