@@ -39,12 +39,18 @@ class RequireAuthenticationMiddleware:
             if not value:
                 return None
             value = "/" + value.lstrip("/")
-            return value if value.endswith("/") else f"{value}/"
+            normalized = value if value.endswith("/") else f"{value}/"
+            if normalized == "/":
+                return None
+            return normalized
 
         def norm_exact(value):
             if not value:
                 return None
-            return "/" + value.lstrip("/")
+            normalized = "/" + value.lstrip("/")
+            if normalized == "/":
+                return None
+            return normalized
 
         for item in getattr(settings, "LOGIN_EXEMPT_URLS", ()):  # exact matches
             normalized = norm_exact(item)
