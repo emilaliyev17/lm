@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from datetime import datetime, date, timedelta
 import calendar
 from .models import LoanCard, Borrower, SettlementChargeType, SettlementCharge, Draw, InterestSchedule
@@ -103,7 +103,8 @@ def api_loan_detail(request, card_number):
         settlement_charges.append({
             'charge_type': charge.charge_type.name,
             'amount': str(charge.amount),
-            'notes': charge.notes or ''
+            'notes': charge.notes or '',
+            'invoice_number': charge.invoice_number
         })
     
     # Get draws
@@ -170,17 +171,18 @@ def create_loan(request):
         
         # Calculate settlement charges total
         settlement_total = Decimal('0')
-        charge_types = SettlementChargeType.objects.filter(is_active=True)[:4]
+        charge_types = list(SettlementChargeType.objects.filter(is_active=True))
         charges_to_create = []
         
         for charge_type in charge_types:
             amount = request.POST.get(f'charge_{charge_type.id}', '0')
+            invoice_number = (request.POST.get(f'charge_{charge_type.id}_invoice', '') or '').strip()
             try:
                 amount_decimal = Decimal(amount) if amount else Decimal('0')
                 if amount_decimal > 0:
                     settlement_total += amount_decimal
-                    charges_to_create.append((charge_type, amount_decimal))
-            except:
+                    charges_to_create.append((charge_type, amount_decimal, invoice_number))
+            except (InvalidOperation, TypeError):
                 pass
         
         # Calculate checkpoint BEFORE creating anything
@@ -201,11 +203,12 @@ def create_loan(request):
             )
             
             # Create individual settlement charges
-            for charge_type, amount in charges_to_create:
+            for charge_type, amount, invoice_number in charges_to_create:
                 SettlementCharge.objects.create(
                     loan_card=loan,
                     charge_type=charge_type,
-                    amount=amount
+                    amount=amount,
+                    invoice_number=invoice_number or None
                 )
             
             # Double-check by updating totals
@@ -229,7 +232,7 @@ def create_loan(request):
     # GET request - show empty form
     context = {
         'borrowers': Borrower.objects.all(),
-        'charge_types': SettlementChargeType.objects.filter(is_active=True)[:4],
+        'charge_types': SettlementChargeType.objects.filter(is_active=True),
     }
     return render(request, 'loans/create_loan.html', context)
 
