@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Edit Invoice Numbers - {{ loan.card_number }}</h2>
+<p style="color: #666; margin-bottom: 2rem;">Borrower: <strong>{{ loan.borrower.name }}</strong></p>
+
+<form method="post">
+    {% csrf_token %}
+    
+    <div class="detail-card" style="margin-bottom: 2rem;">
+        <h3>Main Loan</h3>
+        <div class="form-group" style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem;">Advanced Loan Invoice #:</label>
+            <input type="text" name="advanced_loan_invoice" value="{{ loan.advanced_loan_invoice|default:'' }}" 
+                   class="form-control" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+    </div>
+    
+    <div class="detail-card" style="margin-bottom: 2rem;">
+        <h3>Settlement Charges</h3>
+        {% for charge in settlement_charges %}
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem;">{{ charge.charge_type.name }} Invoice #:</label>
+                <input type="text" name="charge_{{ charge.id }}_invoice" value="{{ charge.invoice_number|default:'' }}" 
+                       class="form-control" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+        {% endfor %}
+    </div>
+    
+    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+        <button type="submit" class="btn btn-primary">Save Invoice Numbers</button>
+        <a href="{% url 'loan_detail' loan.card_number %}" class="btn" style="background: #6c757d;">Cancel</a>
+    </div>
+</form>
+{% endblock %}

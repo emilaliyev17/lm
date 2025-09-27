@@ -12,6 +12,7 @@ urlpatterns = [
     path('loans/<str:card_number>/generate-schedule/', views.generate_interest_schedule, name='generate_interest_schedule'),
     path('post-interest-schedule/', views.post_interest_schedule, name='post_interest_schedule'),
     path('loans/<str:card_number>/', views.loan_detail, name='loan_detail'),
+    path('loans/<str:card_number>/edit-invoices/', views.edit_loan_invoices, name='edit_loan_invoices'),
     path('api/loans/', views.api_loans, name='api_loans'),
     path('api/loan/<str:card_number>/', views.api_loan_detail, name='api_loan_detail'),
 ]

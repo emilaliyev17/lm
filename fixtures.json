@@ -1,0 +1,515 @@
+[
+{
+  "model": "loans.borrower",
+  "pk": 1,
+  "fields": {
+    "name": "Scimitar Ridge Ranch LLC",
+    "email": "",
+    "phone": "",
+    "address": "",
+    "notes": null,
+    "created_at": "2025-09-27T01:57:51.415Z",
+    "updated_at": "2025-09-27T01:57:51.415Z"
+  }
+},
+{
+  "model": "loans.borrower",
+  "pk": 2,
+  "fields": {
+    "name": "D.C. Concepts Construction & Design LLC",
+    "email": "",
+    "phone": "",
+    "address": "",
+    "notes": null,
+    "created_at": "2025-09-27T15:41:16.308Z",
+    "updated_at": "2025-09-27T15:41:16.308Z"
+  }
+},
+{
+  "model": "loans.borrower",
+  "pk": 3,
+  "fields": {
+    "name": "The Sula M Bridges Revocable Family Trust ",
+    "email": "",
+    "phone": "",
+    "address": "",
+    "notes": null,
+    "created_at": "2025-09-27T16:30:44.957Z",
+    "updated_at": "2025-09-27T16:30:44.957Z"
+  }
+},
+{
+  "model": "loans.borrower",
+  "pk": 4,
+  "fields": {
+    "name": "Shukla Trust",
+    "email": "",
+    "phone": "",
+    "address": "",
+    "notes": null,
+    "created_at": "2025-09-27T16:32:51.361Z",
+    "updated_at": "2025-09-27T16:32:51.361Z"
+  }
+},
+{
+  "model": "loans.settlementchargetype",
+  "pk": 1,
+  "fields": {
+    "name": "Origination Fee",
+    "description": "",
+    "display_order": 0,
+    "is_active": true,
+    "is_required": false,
+    "default_amount": "0.00",
+    "created_at": "2025-09-27T01:59:39.922Z"
+  }
+},
+{
+  "model": "loans.settlementchargetype",
+  "pk": 2,
+  "fields": {
+    "name": "Doc Fee",
+    "description": "",
+    "display_order": 0,
+    "is_active": true,
+    "is_required": false,
+    "default_amount": "0.00",
+    "created_at": "2025-09-27T01:59:48.901Z"
+  }
+},
+{
+  "model": "loans.settlementchargetype",
+  "pk": 3,
+  "fields": {
+    "name": "Prepaid Interest",
+    "description": "",
+    "display_order": 0,
+    "is_active": true,
+    "is_required": false,
+    "default_amount": "0.00",
+    "created_at": "2025-09-27T01:59:57.175Z"
+  }
+},
+{
+  "model": "loans.settlementchargetype",
+  "pk": 4,
+  "fields": {
+    "name": "Holdback",
+    "description": "",
+    "display_order": 0,
+    "is_active": true,
+    "is_required": false,
+    "default_amount": "0.00",
+    "created_at": "2025-09-27T02:00:04.944Z"
+  }
+},
+{
+  "model": "loans.loancard",
+  "pk": 1,
+  "fields": {
+    "card_number": "0820-25-01",
+    "borrower": 1,
+    "property_address": "7333 Miller Road, Anacortes, WA 98221 & 5014 S Mullen St, Tacoma, WA 98409  & Florida Land Lots",
+    "advanced_loan_amount": "3000000.00",
+    "advanced_loan_invoice": null,
+    "first_wired_amount": "2658750.00",
+    "total_settlement_charges": "341250.00",
+    "first_loan_date": "2025-09-24",
+    "maturity_date": null,
+    "initial_interest_rate": "0.1300",
+    "status": "active",
+    "notes": null,
+    "created_at": "2025-09-27T02:02:28.854Z",
+    "updated_at": "2025-09-27T02:02:28.854Z"
+  }
+},
+{
+  "model": "loans.loancard",
+  "pk": 2,
+  "fields": {
+    "card_number": "0904-25-01",
+    "borrower": 2,
+    "property_address": "5002 Ferncrest Drive, Winter Park, FL",
+    "advanced_loan_amount": "630000.00",
+    "advanced_loan_invoice": null,
+    "first_wired_amount": "613500.00",
+    "total_settlement_charges": "16500.00",
+    "first_loan_date": "2025-09-19",
+    "maturity_date": null,
+    "initial_interest_rate": "0.1300",
+    "status": "active",
+    "notes": null,
+    "created_at": "2025-09-27T15:43:13.323Z",
+    "updated_at": "2025-09-27T15:43:13.323Z"
+  }
+},
+{
+  "model": "loans.loancard",
+  "pk": 3,
+  "fields": {
+    "card_number": "0826-24-02",
+    "borrower": 3,
+    "property_address": "1043 Meadowbrook Ave Los Angeles, CA",
+    "advanced_loan_amount": "430000.00",
+    "advanced_loan_invoice": null,
+    "first_wired_amount": "417300.00",
+    "total_settlement_charges": "12700.00",
+    "first_loan_date": "2025-09-12",
+    "maturity_date": null,
+    "initial_interest_rate": "0.1300",
+    "status": "active",
+    "notes": null,
+    "created_at": "2025-09-27T16:32:02.408Z",
+    "updated_at": "2025-09-27T16:32:02.408Z"
+  }
+},
+{
+  "model": "loans.loancard",
+  "pk": 4,
+  "fields": {
+    "card_number": "0825-25-01",
+    "borrower": 4,
+    "property_address": "857 Castac Place, Pacific Palisades CA",
+    "advanced_loan_amount": "200000.00",
+    "advanced_loan_invoice": null,
+    "first_wired_amount": "196000.00",
+    "total_settlement_charges": "4000.00",
+    "first_loan_date": "2025-08-28",
+    "maturity_date": null,
+    "initial_interest_rate": "0.1300",
+    "status": "active",
+    "notes": null,
+    "created_at": "2025-09-27T16:33:53.577Z",
+    "updated_at": "2025-09-27T16:33:53.577Z"
+  }
+},
+{
+  "model": "loans.settlementcharge",
+  "pk": 1,
+  "fields": {
+    "loan_card": 1,
+    "charge_type": 2,
+    "amount": "5000.00",
+    "invoice_number": null,
+    "notes": null,
+    "created_at": "2025-09-27T02:02:28.861Z"
+  }
+},
+{
+  "model": "loans.settlementcharge",
+  "pk": 2,
+  "fields": {
+    "loan_card": 1,
+    "charge_type": 4,
+    "amount": "100000.00",
+    "invoice_number": null,
+    "notes": null,
+    "created_at": "2025-09-27T02:02:28.871Z"
+  }
+},
+{
+  "model": "loans.settlementcharge",
+  "pk": 3,
+  "fields": {
+    "loan_card": 1,
+    "charge_type": 1,
+    "amount": "60000.00",
+    "invoice_number": null,
+    "notes": null,
+    "created_at": "2025-09-27T02:02:28.878Z"
+  }
+},
+{
+  "model": "loans.settlementcharge",
+  "pk": 4,
+  "fields": {
+    "loan_card": 1,
+    "charge_type": 3,
+    "amount": "176250.00",
+    "invoice_number": null,
+    "notes": null,
+    "created_at": "2025-09-27T02:02:28.883Z"
+  }
+},
+{
+  "model": "loans.settlementcharge",
+  "pk": 5,
+  "fields": {
+    "loan_card": 2,
+    "charge_type": 2,
+    "amount": "3900.00",
+    "invoice_number": null,
+    "notes": null,
+    "created_at": "2025-09-27T15:43:13.332Z"
+  }
+},
+{
+  "model": "loans.settlementcharge",
+  "pk": 6,
+  "fields": {
+    "loan_card": 2,
+    "charge_type": 1,
+    "amount": "12600.00",
+    "invoice_number": null,
+    "notes": null,
+    "created_at": "2025-09-27T15:43:13.343Z"
+  }
+},
+{
+  "model": "loans.settlementcharge",
+  "pk": 7,
+  "fields": {
+    "loan_card": 3,
+    "charge_type": 2,
+    "amount": "1950.00",
+    "invoice_number": null,
+    "notes": null,
+    "created_at": "2025-09-27T16:32:02.411Z"
+  }
+},
+{
+  "model": "loans.settlementcharge",
+  "pk": 8,
+  "fields": {
+    "loan_card": 3,
+    "charge_type": 1,
+    "amount": "10750.00",
+    "invoice_number": null,
+    "notes": null,
+    "created_at": "2025-09-27T16:32:02.421Z"
+  }
+},
+{
+  "model": "loans.settlementcharge",
+  "pk": 9,
+  "fields": {
+    "loan_card": 4,
+    "charge_type": 1,
+    "amount": "4000.00",
+    "invoice_number": null,
+    "notes": null,
+    "created_at": "2025-09-27T16:33:53.579Z"
+  }
+},
+{
+  "model": "loans.interestschedule",
+  "pk": 1,
+  "fields": {
+    "loan_card": 3,
+    "period_number": 1,
+    "period_type": "monthly",
+    "charge_date": "2025-09-01",
+    "calculated_amount": "4658.33",
+    "adjusted_amount": null,
+    "is_posted": false,
+    "received_date": null,
+    "invoice_number": null,
+    "posted_at": null,
+    "posted_by": null
+  }
+},
+{
+  "model": "loans.interestschedule",
+  "pk": 2,
+  "fields": {
+    "loan_card": 3,
+    "period_number": 2,
+    "period_type": "monthly",
+    "charge_date": "2025-10-01",
+    "calculated_amount": "4658.33",
+    "adjusted_amount": null,
+    "is_posted": false,
+    "received_date": null,
+    "invoice_number": null,
+    "posted_at": null,
+    "posted_by": null
+  }
+},
+{
+  "model": "loans.interestschedule",
+  "pk": 3,
+  "fields": {
+    "loan_card": 3,
+    "period_number": 3,
+    "period_type": "monthly",
+    "charge_date": "2025-11-01",
+    "calculated_amount": "4658.33",
+    "adjusted_amount": null,
+    "is_posted": false,
+    "received_date": null,
+    "invoice_number": null,
+    "posted_at": null,
+    "posted_by": null
+  }
+},
+{
+  "model": "loans.interestschedule",
+  "pk": 4,
+  "fields": {
+    "loan_card": 3,
+    "period_number": 4,
+    "period_type": "monthly",
+    "charge_date": "2025-12-01",
+    "calculated_amount": "4658.33",
+    "adjusted_amount": null,
+    "is_posted": false,
+    "received_date": null,
+    "invoice_number": null,
+    "posted_at": null,
+    "posted_by": null
+  }
+},
+{
+  "model": "loans.interestschedule",
+  "pk": 5,
+  "fields": {
+    "loan_card": 3,
+    "period_number": 5,
+    "period_type": "monthly",
+    "charge_date": "2026-01-01",
+    "calculated_amount": "4658.33",
+    "adjusted_amount": null,
+    "is_posted": false,
+    "received_date": null,
+    "invoice_number": null,
+    "posted_at": null,
+    "posted_by": null
+  }
+},
+{
+  "model": "loans.interestschedule",
+  "pk": 6,
+  "fields": {
+    "loan_card": 3,
+    "period_number": 6,
+    "period_type": "monthly",
+    "charge_date": "2026-02-01",
+    "calculated_amount": "4658.33",
+    "adjusted_amount": null,
+    "is_posted": false,
+    "received_date": null,
+    "invoice_number": null,
+    "posted_at": null,
+    "posted_by": null
+  }
+},
+{
+  "model": "loans.interestschedule",
+  "pk": 7,
+  "fields": {
+    "loan_card": 3,
+    "period_number": 7,
+    "period_type": "monthly",
+    "charge_date": "2026-03-01",
+    "calculated_amount": "4658.33",
+    "adjusted_amount": null,
+    "is_posted": false,
+    "received_date": null,
+    "invoice_number": null,
+    "posted_at": null,
+    "posted_by": null
+  }
+},
+{
+  "model": "loans.interestschedule",
+  "pk": 8,
+  "fields": {
+    "loan_card": 3,
+    "period_number": 8,
+    "period_type": "monthly",
+    "charge_date": "2026-04-01",
+    "calculated_amount": "4658.33",
+    "adjusted_amount": null,
+    "is_posted": false,
+    "received_date": null,
+    "invoice_number": null,
+    "posted_at": null,
+    "posted_by": null
+  }
+},
+{
+  "model": "loans.interestschedule",
+  "pk": 9,
+  "fields": {
+    "loan_card": 3,
+    "period_number": 9,
+    "period_type": "monthly",
+    "charge_date": "2026-05-01",
+    "calculated_amount": "4658.33",
+    "adjusted_amount": null,
+    "is_posted": false,
+    "received_date": null,
+    "invoice_number": null,
+    "posted_at": null,
+    "posted_by": null
+  }
+},
+{
+  "model": "loans.interestschedule",
+  "pk": 10,
+  "fields": {
+    "loan_card": 3,
+    "period_number": 10,
+    "period_type": "monthly",
+    "charge_date": "2026-06-01",
+    "calculated_amount": "4658.33",
+    "adjusted_amount": null,
+    "is_posted": false,
+    "received_date": null,
+    "invoice_number": null,
+    "posted_at": null,
+    "posted_by": null
+  }
+},
+{
+  "model": "loans.interestschedule",
+  "pk": 11,
+  "fields": {
+    "loan_card": 3,
+    "period_number": 11,
+    "period_type": "monthly",
+    "charge_date": "2026-07-01",
+    "calculated_amount": "4658.33",
+    "adjusted_amount": null,
+    "is_posted": false,
+    "received_date": null,
+    "invoice_number": null,
+    "posted_at": null,
+    "posted_by": null
+  }
+},
+{
+  "model": "loans.interestschedule",
+  "pk": 12,
+  "fields": {
+    "loan_card": 3,
+    "period_number": 12,
+    "period_type": "monthly",
+    "charge_date": "2026-08-01",
+    "calculated_amount": "4658.33",
+    "adjusted_amount": null,
+    "is_posted": false,
+    "received_date": null,
+    "invoice_number": null,
+    "posted_at": null,
+    "posted_by": null
+  }
+},
+{
+  "model": "loans.interestschedule",
+  "pk": 13,
+  "fields": {
+    "loan_card": 3,
+    "period_number": 13,
+    "period_type": "monthly",
+    "charge_date": "2026-09-01",
+    "calculated_amount": "4658.33",
+    "adjusted_amount": null,
+    "is_posted": false,
+    "received_date": null,
+    "invoice_number": null,
+    "posted_at": null,
+    "posted_by": null
+  }
+}
+]

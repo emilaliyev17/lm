@@ -37,7 +37,9 @@
 
 <div class="detail-grid">
     <div class="detail-card">
-        <h3>Settlement Charges</h3>
+        <h3>Settlement Charges 
+            <a href="{% url 'edit_loan_invoices' loan.card_number %}" class="btn">Edit</a>
+        </h3>
         <table>
             <tr>
                 <th>Charge</th>

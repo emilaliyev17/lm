@@ -501,3 +501,29 @@ def post_interest_schedule(request):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Only POST method allowed'})
+
+
+@login_required
+def edit_loan_invoices(request, card_number):
+    loan = get_object_or_404(LoanCard, card_number=card_number)
+    
+    if request.method == 'POST':
+        # Update advanced loan invoice
+        loan.advanced_loan_invoice = request.POST.get('advanced_loan_invoice', '').strip() or None
+        loan.save()
+        
+        # Update settlement charges invoices
+        for charge in loan.settlement_charges.all():
+            invoice_num = request.POST.get(f'charge_{charge.id}_invoice', '').strip() or None
+            charge.invoice_number = invoice_num
+            charge.save()
+        
+        messages.success(request, 'Invoice numbers updated successfully')
+        return redirect('loan_detail', card_number=card_number)
+    
+    # GET request - show form
+    context = {
+        'loan': loan,
+        'settlement_charges': loan.settlement_charges.all()
+    }
+    return render(request, 'loans/edit_invoices.html', context)
