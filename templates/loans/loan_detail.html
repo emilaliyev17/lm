@@ -38,9 +38,15 @@
     <div class="detail-card">
         <h3>Settlement Charges</h3>
         <table>
+            <tr>
+                <th>Charge</th>
+                <th>Invoice #</th>
+                <th style="text-align: right;">Amount</th>
+            </tr>
             {% for charge in settlement_charges %}
             <tr>
                 <td>{{ charge.charge_type.name }}</td>
+                <td>{% if charge.invoice_number %}{{ charge.invoice_number }}{% else %}—{% endif %}</td>
                 <td style="text-align: right;">${{ charge.amount|floatformat:2|intcomma }}</td>
             </tr>
             {% endfor %}

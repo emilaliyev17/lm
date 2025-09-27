@@ -147,6 +147,12 @@ class SettlementCharge(models.Model):
     loan_card = models.ForeignKey(LoanCard, on_delete=models.CASCADE, related_name='settlement_charges')
     charge_type = models.ForeignKey(SettlementChargeType, on_delete=models.PROTECT)
     amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
+    invoice_number = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Invoice or document number"
+    )
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     

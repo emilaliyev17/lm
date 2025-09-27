@@ -7,7 +7,7 @@ from .models import Borrower, LoanCard, SettlementChargeType, SettlementCharge, 
 class SettlementChargeInline(admin.TabularInline):
     model = SettlementCharge
     extra = 0
-    fields = ['charge_type', 'amount', 'notes']
+    fields = ['charge_type', 'amount', 'invoice_number', 'notes']
     
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "charge_type":
