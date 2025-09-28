@@ -71,6 +71,10 @@ def loan_detail(request, card_number):
     checkpoint_valid = abs(checkpoint) < Decimal('0.01')
     monthly_interest = loan.get_monthly_interest_for_initial()
     interest_rate_display = loan.initial_interest_rate * 100
+    interest_rate_percent = format(
+        (loan.initial_interest_rate * Decimal('100')).quantize(Decimal('0.01')),
+        'f'
+    )
     status_obj = loan.dynamic_status
     status_code_raw = ''
     status_display_code = 'UNKNOWN'
@@ -93,6 +97,7 @@ def loan_detail(request, card_number):
         'checkpoint_valid': checkpoint_valid,
         'monthly_interest': monthly_interest,
         'interest_rate_display': interest_rate_display,
+        'interest_rate_percent': interest_rate_percent,
         'settlement_charges': settlement_charges,
         'additional_draws': additional_draws,
         'effective_status_code': status_code,

@@ -16,7 +16,7 @@
                 <strong>Advanced Loan:</strong> ${{ loan.advanced_loan_amount|floatformat:2|intcomma }}<br>
                 <strong>Invoice #:</strong> {% if loan.advanced_loan_invoice %}{{ loan.advanced_loan_invoice }}{% else %}—{% endif %}<br>
                 <strong>First Wired:</strong> ${{ loan.first_wired_amount|floatformat:2|intcomma }}<br>
-                <strong>Interest Rate:</strong> {{ interest_rate_display|floatformat:1 }}%
+                <strong>Interest Rate:</strong> {{ interest_rate_percent }}%
             </div>
             <div>
                 <strong>Settlement Charges:</strong> ${{ loan.total_settlement_charges|floatformat:2|intcomma }}<br>
@@ -66,7 +66,7 @@
                 <td><strong>Draw #0 (Advanced Loan)</strong></td>
                 <td style="text-align: right;">${{ loan.advanced_loan_amount|floatformat:2|intcomma }}</td>
                 <td style="text-align: right;">{{ loan.first_loan_date|date:"n/j/y" }}</td>
-                <td style="text-align: right;">{% widthratio loan.initial_interest_rate 1 100 %}%</td>
+                <td style="text-align: right;">{{ interest_rate_percent }}%</td>
             </tr>
             {% for draw in loan.additional_draws.all %}
             <tr>
