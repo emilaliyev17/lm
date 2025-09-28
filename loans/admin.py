@@ -49,8 +49,8 @@ class SettlementChargeTypeAdmin(admin.ModelAdmin):
 class LoanCardAdmin(admin.ModelAdmin):
     list_display = ['card_number', 'borrower', 'advanced_loan_amount', 
                     'first_wired_amount', 'total_settlement_charges', 
-                    'checkpoint_status', 'status', 'created_at']
-    list_filter = ['status', 'created_at']
+                    'checkpoint_status', 'dynamic_status', 'created_at']
+    list_filter = ['dynamic_status', 'created_at']
     search_fields = ['card_number', 'borrower__name']
     readonly_fields = ['checkpoint_display', 'total_funded_display', 
                       'monthly_interest_display', 'created_at', 'updated_at']
@@ -59,7 +59,7 @@ class LoanCardAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('card_number', 'borrower', 'property_address', 'status', 'dynamic_status')
+            'fields': ('card_number', 'borrower', 'property_address', 'dynamic_status')
         }),
         ('Loan Amounts', {
             'fields': ('advanced_loan_amount', 'advanced_loan_invoice', 'first_wired_amount', 

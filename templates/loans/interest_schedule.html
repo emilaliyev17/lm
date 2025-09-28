@@ -159,9 +159,9 @@
                 <strong>Card Number:</strong> {{ loan.card_number }}<br>
                 <strong>Status:</strong>
                 {% if loan.dynamic_status %}
-                    {{ loan.dynamic_status.code }}
+                    {{ loan.dynamic_status.name|default:loan.dynamic_status.code }}
                 {% else %}
-                    {{ loan.status }}
+                    UNKNOWN
                 {% endif %}<br>
             </div>
             <div>
