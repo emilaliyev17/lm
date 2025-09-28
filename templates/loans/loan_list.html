@@ -44,7 +44,7 @@
             <td>${{ loan.advanced_loan|floatformat:0|intcomma }}</td>
             <td>${{ loan.first_wired|floatformat:0|intcomma }}</td>
             <td>{% if loan.advanced_loan_invoice %}{{ loan.advanced_loan_invoice }}{% else %}—{% endif %}</td>
-            <td>{{ loan.interest_rate_display|floatformat:1 }}%</td>
+            <td>{{ loan.interest_rate_display }}%</td>
             <td>${{ loan.settlement|floatformat:0|intcomma }}</td>
             <td>
                 {% if loan.checkpoint_valid %}

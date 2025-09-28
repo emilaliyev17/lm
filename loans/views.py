@@ -48,7 +48,7 @@ def loan_list(request):
             'checkpoint_valid': abs(checkpoint) < Decimal('0.01'),
             'status_code': status_code,
             'status_display_code': status_display_code,
-            'interest_rate_display': format((loan.initial_interest_rate * Decimal('100')).quantize(Decimal('0.1')), '.1f'),
+            'interest_rate_display': format(loan.initial_interest_rate * Decimal('100'), '.2f'),
             'advanced_loan_invoice': loan.advanced_loan_invoice,
         })
     
@@ -70,7 +70,7 @@ def loan_detail(request, card_number):
     checkpoint = loan.calculate_checkpoint()
     checkpoint_valid = abs(checkpoint) < Decimal('0.01')
     monthly_interest = loan.get_monthly_interest_for_initial()
-    interest_rate_display = loan.initial_interest_rate * 100
+    interest_rate_display = format((loan.initial_interest_rate * Decimal('100')).quantize(Decimal('0.1')), '.1f')
     interest_rate_percent = format(
         (loan.initial_interest_rate * Decimal('100')).quantize(Decimal('0.01')),
         'f'
