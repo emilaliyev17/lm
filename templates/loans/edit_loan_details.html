@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block content %}
+<h2>Edit Loan Details</h2>
+<p style="color: #c0392b; margin-bottom: 1rem;">
+    This will affect future interest calculations only. Posted payments will not change.
+</p>
+
+<form method="post" class="edit-loan-form" style="max-width: 820px;">
+    {% csrf_token %}
+
+    <div class="detail-card" style="margin-bottom: 2rem;">
+        <h3>Core Information</h3>
+
+        <div class="form-row">
+            <label>Card Number</label>
+            <input type="text" value="{{ loan.card_number }}" disabled>
+        </div>
+
+        <div class="form-row">
+            <label>Property Address</label>
+            <textarea name="property_address" rows="3" placeholder="Add the updated property address">{{ form_data.property_address }}</textarea>
+        </div>
+
+        <div class="form-row">
+            <label>Annual Interest Rate (%)*</label>
+            <input type="number"
+                   name="annual_interest_rate"
+                   step="0.1"
+                   min="0"
+                   max="100"
+                   value="{{ form_data.annual_interest_rate }}"
+                   required>
+            <small>Enter a value between 0 and 100. Future interest accrual uses this rate.</small>
+        </div>
+
+        <div class="form-row">
+            <label>Notes</label>
+            <textarea name="notes" rows="4" placeholder="Optional notes about this loan">{{ form_data.notes }}</textarea>
+            <small>If the rate changes, a timestamped note will be appended automatically.</small>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="{% url 'loan_detail' loan.card_number %}" class="btn" style="background: #ccc;">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+</form>
+
+<style>
+.edit-loan-form label {
+    display: block;
+    color: #2c3e50;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+}
+
+.edit-loan-form .form-row {
+    margin-bottom: 1.25rem;
+}
+
+.edit-loan-form input,
+.edit-loan-form textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    border: 1px solid #1f2d3d;
+    background: #2c3e50;
+    color: #ecf0f1;
+    font-size: 0.95rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.edit-loan-form input:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.edit-loan-form input:focus,
+.edit-loan-form textarea:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.25);
+}
+
+.edit-loan-form textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.edit-loan-form small {
+    color: #bdc3c7;
+    display: block;
+    margin-top: 0.35rem;
+}
+
+.edit-loan-form .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+</style>
+{% endblock %}

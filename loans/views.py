@@ -9,7 +9,11 @@ from django.contrib.auth.decorators import login_required
 from decimal import Decimal, InvalidOperation
 from datetime import datetime, date, timedelta
 import calendar
+import logging
 from .models import LoanCard, Borrower, SettlementChargeType, SettlementCharge, Draw, InterestSchedule, LoanStatus
+
+
+logger = logging.getLogger(__name__)
 
 # Create your views here.
 
@@ -247,6 +251,16 @@ def create_loan(request):
             advanced = Decimal('0')
             first_wired = Decimal('0')
 
+        interest_rate_input = (request.POST.get('annual_interest_rate', '') or '').strip()
+        interest_rate_decimal = Decimal('0.13')
+        if interest_rate_input:
+            try:
+                interest_rate_percent = Decimal(interest_rate_input)
+                if Decimal('0') <= interest_rate_percent <= Decimal('100'):
+                    interest_rate_decimal = interest_rate_percent / Decimal('100')
+            except (InvalidOperation, TypeError):
+                pass
+
         advanced_invoice = (request.POST.get('advanced_loan_invoice', '') or '').strip()
 
         # Calculate settlement charges total
@@ -286,7 +300,7 @@ def create_loan(request):
                 first_wired_amount=first_wired,
                 total_settlement_charges=settlement_total,  # Set it directly
                 first_loan_date=request.POST.get('first_loan_date'),
-                initial_interest_rate=Decimal('0.13'),
+                initial_interest_rate=interest_rate_decimal,
                 dynamic_status=active_status
             )
             
@@ -323,6 +337,89 @@ def create_loan(request):
         'charge_types': SettlementChargeType.objects.filter(is_active=True),
     }
     return render(request, 'loans/create_loan.html', context)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def edit_loan_details(request, card_number):
+    loan = get_object_or_404(LoanCard, card_number=card_number)
+
+    def rate_to_percent_string(rate: Decimal) -> str:
+        value = (rate * Decimal('100')).quantize(Decimal('0.1'))
+        return format(value, 'f')
+
+    if request.method == 'POST':
+        property_address = (request.POST.get('property_address', '') or '').strip()
+        notes_input = (request.POST.get('notes', '') or '').strip()
+        interest_input = (request.POST.get('annual_interest_rate', '') or '').strip()
+
+        form_data = {
+            'property_address': property_address,
+            'notes': notes_input,
+            'annual_interest_rate': interest_input or rate_to_percent_string(loan.initial_interest_rate),
+        }
+
+        errors = []
+        new_interest_decimal = loan.initial_interest_rate
+        if not interest_input:
+            errors.append('Annual interest rate is required.')
+        else:
+            try:
+                interest_percent = Decimal(interest_input)
+                if not (Decimal('0') <= interest_percent <= Decimal('100')):
+                    errors.append('Annual interest rate must be between 0 and 100.')
+                else:
+                    new_interest_decimal = (interest_percent / Decimal('100')).quantize(Decimal('0.0001'))
+            except (InvalidOperation, TypeError):
+                errors.append('Enter a valid annual interest rate.')
+
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+            context = {
+                'loan': loan,
+                'form_data': form_data,
+            }
+            return render(request, 'loans/edit_loan_details.html', context)
+
+        notes_to_save = notes_input
+        rate_changed = new_interest_decimal != loan.initial_interest_rate
+        if rate_changed:
+            old_rate_percent = (loan.initial_interest_rate * Decimal('100')).quantize(Decimal('0.01'))
+            new_rate_percent = (new_interest_decimal * Decimal('100')).quantize(Decimal('0.01'))
+            timestamp = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+            change_comment = f"Rate changed from {old_rate_percent}% to {new_rate_percent}% on {timestamp}"
+            notes_to_save = (notes_to_save + '\n\n' if notes_to_save else '') + change_comment
+            logger.info(
+                "Loan %s interest rate changed from %s%% to %s%% by user %s",
+                loan.card_number,
+                old_rate_percent,
+                new_rate_percent,
+                getattr(request.user, 'username', 'anonymous'),
+            )
+
+        loan.property_address = property_address
+        loan.notes = notes_to_save or None
+        loan.initial_interest_rate = new_interest_decimal
+        loan.save(update_fields=['property_address', 'notes', 'initial_interest_rate', 'updated_at'])
+
+        messages.success(request, 'Loan details updated successfully.')
+        if rate_changed:
+            messages.info(request, 'Future interest calculations will use the new rate. Posted payments remain unchanged.')
+
+        return redirect('loan_detail', card_number=card_number)
+
+    form_data = {
+        'property_address': loan.property_address or '',
+        'notes': loan.notes or '',
+        'annual_interest_rate': rate_to_percent_string(loan.initial_interest_rate),
+    }
+
+    context = {
+        'loan': loan,
+        'form_data': form_data,
+    }
+    return render(request, 'loans/edit_loan_details.html', context)
 
 
 @login_required

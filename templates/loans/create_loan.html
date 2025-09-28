@@ -50,6 +50,18 @@
             <label>First Loan Date*</label>
             <input type="date" name="first_loan_date" required>
         </div>
+
+        <div style="margin-bottom: 1rem;">
+            <label>Annual Interest Rate (%)*</label>
+            <input type="number"
+                   name="annual_interest_rate"
+                   step="0.1"
+                   min="0"
+                   max="100"
+                   value="{{ form_data.annual_interest_rate|default:'13.0' }}"
+                   required>
+            <small style="color: #666;">Enter the annual rate as a percentage (e.g., 13.0)</small>
+        </div>
     </div>
     
     <div class="detail-card" style="margin-bottom: 2rem;">

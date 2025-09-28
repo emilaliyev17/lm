@@ -4,6 +4,10 @@
 <h2>Loan Card: {{ loan.card_number }}</h2>
 <p style="color: #666; margin-bottom: 2rem;">Borrower: {{ loan.borrower.name }}</p>
 
+<div style="margin-bottom: 1.5rem;">
+    <a href="{% url 'edit_loan_details' loan.card_number %}" class="btn btn-primary">Edit Loan Details</a>
+</div>
+
 <div class="detail-grid">
     <div class="detail-card">
         <h3>Loan Amounts</h3>
