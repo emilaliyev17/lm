@@ -10,7 +10,7 @@ from decimal import Decimal, InvalidOperation
 from datetime import datetime, date, timedelta
 import calendar
 import logging
-from .models import LoanCard, Borrower, SettlementChargeType, SettlementCharge, Draw, InterestSchedule, LoanStatus
+from .models import LoanCard, Borrower, SettlementChargeType, SettlementCharge, Draw, InterestSchedule, LoanStatus, LoanExtension
 
 
 logger = logging.getLogger(__name__)
@@ -497,29 +497,69 @@ def create_borrower(request):
 @login_required
 def add_extension(request, card_number):
     loan = get_object_or_404(LoanCard, card_number=card_number)
-    
+
     if request.method == 'POST':
+        form_data = {
+            'extension_months': (request.POST.get('extension_months', '') or '').strip(),
+            'extension_fee': (request.POST.get('extension_fee', '') or '').strip(),
+            'reason': (request.POST.get('reason', '') or '').strip(),
+        }
+
+        errors = []
+
         try:
-            from .models import LoanExtension
-            extension = LoanExtension.objects.create(
-                loan_card=loan,
-                extension_months=int(request.POST.get('extension_months', 0)),
-                extension_fee=Decimal(request.POST.get('extension_fee', '0')),
-                has_interest=request.POST.get('has_interest') == 'yes',
-                interest_rate=Decimal(request.POST.get('interest_rate', '0.13')) if request.POST.get('has_interest') == 'yes' else None,
-                reason=request.POST.get('reason', '')
-            )
-            return redirect('loan_detail', card_number=card_number)
-        except Exception as e:
+            extension_months = int(form_data['extension_months'])
+            if extension_months < 1:
+                errors.append('Extension months must be at least 1.')
+        except (ValueError, TypeError):
+            errors.append('Enter a valid number of months to extend the loan.')
+            extension_months = None
+
+        try:
+            extension_fee = Decimal(form_data['extension_fee'] or '0')
+            if extension_fee < 0:
+                errors.append('Extension fee cannot be negative.')
+        except (InvalidOperation, TypeError):
+            errors.append('Enter a valid extension fee amount.')
+            extension_fee = None
+
+        if errors:
+            for error in errors:
+                messages.error(request, error)
             context = {
                 'loan': loan,
-                'error': str(e)
+                'existing_extensions': loan.extensions.all().order_by('created_date'),
+                'form_data': form_data,
             }
             return render(request, 'loans/add_extension.html', context)
-    
+
+        LoanExtension.objects.create(
+            loan_card=loan,
+            extension_months=extension_months,
+            extension_fee=extension_fee,
+            has_interest=False,
+            interest_rate=None,
+            reason=form_data['reason']
+        )
+
+        base_date = loan.maturity_date or loan.first_loan_date
+        loan.maturity_date = add_months(base_date, extension_months)
+        loan.save(update_fields=['maturity_date', 'updated_at'])
+
+        messages.success(
+            request,
+            f'Extension of {extension_months} month(s) added. New maturity date: {loan.maturity_date.strftime("%m/%d/%Y")}.'
+        )
+        return redirect('loan_detail', card_number=card_number)
+
     context = {
         'loan': loan,
-        'existing_extensions': loan.extensions.all()
+        'existing_extensions': loan.extensions.all().order_by('created_date'),
+        'form_data': {
+            'extension_months': '',
+            'extension_fee': '0.00',
+            'reason': '',
+        }
     }
     return render(request, 'loans/add_extension.html', context)
 

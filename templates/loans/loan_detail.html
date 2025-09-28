@@ -21,7 +21,8 @@
             <div>
                 <strong>Settlement Charges:</strong> ${{ loan.total_settlement_charges|floatformat:2|intcomma }}<br>
                 <strong>Total Funded:</strong> ${{ total_funded|floatformat:2|intcomma }}<br>
-                <strong>Funded Date:</strong> {{ loan.first_loan_date|date:"n/j/y" }}
+                <strong>Funded Date:</strong> {{ loan.first_loan_date|date:"n/j/y" }}<br>
+                <strong>Maturity Date:</strong> {% if loan.maturity_date %}{{ loan.maturity_date|date:"n/j/y" }}{% else %}—{% endif %}
             </div>
         </div>
     </div>
@@ -94,7 +95,7 @@
             <th>Extension</th>
             <th>Period</th>
             <th>Fee</th>
-            <th>Interest</th>
+            <th>Reason</th>
             <th>Date Added</th>
         </tr>
         {% for extension in loan.extensions.all %}
@@ -102,7 +103,7 @@
             <td>Extension #{{ forloop.counter }}</td>
             <td>{{ extension.extension_months }} months</td>
             <td>${{ extension.extension_fee|floatformat:2|intcomma }}</td>
-            <td>{% if extension.has_interest %}{% widthratio extension.interest_rate 1 100 %}%{% else %}No{% endif %}</td>
+            <td>{{ extension.reason|default:'—' }}</td>
             <td>{{ extension.created_date|date:"n/j/y" }}</td>
         </tr>
         {% endfor %}
