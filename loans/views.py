@@ -19,7 +19,7 @@ def loan_list(request):
     
     # Calculate statistics
     total_loans = loans.count()
-    active_loans = loans.filter(status='active').count()
+    active_loans = loans.filter(dynamic_status__code='active').count()
     total_portfolio = loans.aggregate(total=Sum('advanced_loan_amount'))['total'] or Decimal('0')
     
     # Format loan data for template
@@ -27,9 +27,13 @@ def loan_list(request):
     for loan in loans:
         checkpoint = loan.calculate_checkpoint()
         status_obj = loan.dynamic_status
-        raw_status_code = (status_obj.code if status_obj else (loan.status or '')).strip()
-        status_code = raw_status_code.lower() if raw_status_code else 'unknown'
-        status_display_code = raw_status_code or 'UNKNOWN'
+        status_code_raw = ''
+        status_display_code = 'UNKNOWN'
+        if status_obj:
+            status_code_raw = (status_obj.code or '').strip()
+            display_candidate = (status_obj.name or '').strip()
+            status_display_code = display_candidate or (status_code_raw or 'UNKNOWN')
+        status_code = status_code_raw.lower() if status_code_raw else 'unknown'
         loan_data.append({
             'card_number': loan.card_number,
             'borrower': loan.borrower.name,
@@ -64,9 +68,13 @@ def loan_detail(request, card_number):
     monthly_interest = loan.get_monthly_interest_for_initial()
     interest_rate_display = loan.initial_interest_rate * 100
     status_obj = loan.dynamic_status
-    raw_status_code = (status_obj.code if status_obj else (loan.status or '')).strip()
-    status_code = raw_status_code.lower() if raw_status_code else 'unknown'
-    status_display_code = raw_status_code or 'UNKNOWN'
+    status_code_raw = ''
+    status_display_code = 'UNKNOWN'
+    if status_obj:
+        status_code_raw = (status_obj.code or '').strip()
+        display_candidate = (status_obj.name or '').strip()
+        status_display_code = display_candidate or (status_code_raw or 'UNKNOWN')
+    status_code = status_code_raw.lower() if status_code_raw else 'unknown'
 
     # Get related data
     settlement_charges = loan.settlement_charges.all()
@@ -96,6 +104,13 @@ def api_loans(request):
     data = []
     
     for loan in loans:
+        status_obj = loan.dynamic_status
+        status_code_raw = ''
+        status_display = 'UNKNOWN'
+        if status_obj:
+            status_code_raw = (status_obj.code or '').strip()
+            display_candidate = (status_obj.name or '').strip()
+            status_display = display_candidate or (status_code_raw or 'UNKNOWN')
         data.append({
             'card_number': loan.card_number,
             'borrower': loan.borrower.name,
@@ -103,7 +118,9 @@ def api_loans(request):
             'advanced_loan_invoice': loan.advanced_loan_invoice,
             'first_wired_amount': str(loan.first_wired_amount),
             'total_settlement_charges': str(loan.total_settlement_charges),
-            'status': loan.status,
+            'status': status_code_raw.lower() if status_code_raw else None,
+            'dynamic_status': status_code_raw or None,
+            'dynamic_status_display': status_display,
             'checkpoint': str(loan.calculate_checkpoint()),
             'created_at': loan.created_at.isoformat(),
         })
@@ -146,6 +163,14 @@ def api_loan_detail(request, card_number):
             'is_paid': payment.is_paid
         })
     
+    status_obj = loan.dynamic_status
+    status_code_raw = ''
+    status_display = 'UNKNOWN'
+    if status_obj:
+        status_code_raw = (status_obj.code or '').strip()
+        display_candidate = (status_obj.name or '').strip()
+        status_display = display_candidate or (status_code_raw or 'UNKNOWN')
+
     data = {
         'card_number': loan.card_number,
         'borrower': {
@@ -161,7 +186,9 @@ def api_loan_detail(request, card_number):
         'first_loan_date': loan.first_loan_date.isoformat(),
         'maturity_date': loan.maturity_date.isoformat() if loan.maturity_date else None,
         'initial_interest_rate': str(loan.initial_interest_rate),
-        'status': loan.status,
+        'status': status_code_raw.lower() if status_code_raw else None,
+        'dynamic_status': status_code_raw or None,
+        'dynamic_status_display': status_display,
         'checkpoint': str(loan.calculate_checkpoint()),
         'total_funded_amount': str(loan.get_total_funded_amount()),
         'monthly_interest_initial': str(loan.get_monthly_interest_for_initial()),
@@ -181,28 +208,30 @@ def change_loan_status(request, card_number):
     """Update loan status with simple validation"""
     loan = get_object_or_404(LoanCard, card_number=card_number)
 
-    new_status = request.POST.get('status', '').lower()
-    valid_statuses = {'active', 'closed', 'defaulted', 'pending'}
+    new_status_input = (request.POST.get('dynamic_status') or request.POST.get('status', '') or '').strip()
 
-    if new_status not in valid_statuses:
-        messages.error(request, 'Invalid status selected.')
+    if not new_status_input:
+        messages.error(request, 'No status selected.')
         return redirect('loan_detail', card_number=card_number)
 
-    status_obj = None
     try:
-        status_obj = LoanStatus.objects.get(code=new_status)
+        status_obj = LoanStatus.objects.get(code__iexact=new_status_input)
     except LoanStatus.DoesNotExist:
         messages.error(request, 'Selected status is not configured. Please contact an administrator.')
         return redirect('loan_detail', card_number=card_number)
 
-    if loan.status == new_status and loan.dynamic_status_id == status_obj.id:
+    if not status_obj.is_active:
+        messages.error(request, 'Selected status is not active.')
+        return redirect('loan_detail', card_number=card_number)
+
+    current_code = (loan.dynamic_status.code or '').strip().lower() if loan.dynamic_status else ''
+    if current_code == (status_obj.code or '').strip().lower():
         messages.info(request, 'Status unchanged.')
         return redirect('loan_detail', card_number=card_number)
 
-    loan.status = new_status
     loan.dynamic_status = status_obj
-    loan.save(update_fields=['status', 'dynamic_status', 'updated_at'])
-    messages.success(request, f'Loan status updated to {new_status.title()} successfully.')
+    loan.save(update_fields=['dynamic_status', 'updated_at'])
+    messages.success(request, f'Loan status updated to {(status_obj.name or status_obj.code).title()} successfully.')
     return redirect('loan_detail', card_number=card_number)
 
 
@@ -241,6 +270,13 @@ def create_loan(request):
         
         if abs(checkpoint) < Decimal('0.01'):  # Valid checkpoint
             # Create loan with correct total_settlement_charges
+            active_status = None
+            try:
+                active_status = LoanStatus.objects.get(code='active')
+            except LoanStatus.DoesNotExist:
+                messages.error(request, 'Active loan status is not configured. Please contact an administrator.')
+                return redirect('loan_list')
+
             loan = LoanCard.objects.create(
                 card_number=request.POST.get('card_number'),
                 borrower_id=request.POST.get('borrower'),
@@ -251,7 +287,7 @@ def create_loan(request):
                 total_settlement_charges=settlement_total,  # Set it directly
                 first_loan_date=request.POST.get('first_loan_date'),
                 initial_interest_rate=Decimal('0.13'),
-                status='active'
+                dynamic_status=active_status
             )
             
             # Create individual settlement charges
