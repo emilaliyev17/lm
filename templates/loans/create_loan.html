@@ -33,7 +33,7 @@
         
         <div style="margin-bottom: 1rem;">
             <label>Borrower*</label>
-            <select name="borrower" required>
+            <select name="borrower" class="select2-borrower" data-placeholder="Type to search..." required>
                 <option value="">Select borrower...</option>
                 {% for borrower in borrowers %}
                 <option value="{{ borrower.id }}">{{ borrower.name }}</option>
@@ -103,12 +103,31 @@
 </form>
 
 <script>
+function matchBorrowerSubstring(params, data) {
+    if (!window.jQuery || !params || !data) {
+        return data;
+    }
+
+    if (data.children && data.children.length) {
+        return data;
+    }
+
+    const term = window.jQuery.trim(params.term || '').toLowerCase();
+    if (!term) {
+        return data;
+    }
+
+    const text = (data.text || '').toLowerCase();
+    return text.includes(term) ? data : null;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('loanForm');
     const advancedInput = document.getElementById('advancedLoan');
     const firstWiredInput = document.getElementById('firstWired');
     const settlementInputs = document.querySelectorAll('.settlement-charge');
     const submitBtn = document.getElementById('submitBtn');
+    const borrowerSelect = document.querySelector('.select2-borrower');
     
     const checkpointDisplay = document.getElementById('checkpointDisplay');
     const advancedDisplay = document.getElementById('advancedDisplay');
@@ -157,6 +176,15 @@ document.addEventListener('DOMContentLoaded', function() {
         input.addEventListener('input', calculateCheckpoint);
     });
     
+    if (window.jQuery && borrowerSelect) {
+        window.jQuery(borrowerSelect).select2({
+            placeholder: borrowerSelect.dataset.placeholder || 'Type to search...',
+            allowClear: true,
+            width: '100%',
+            matcher: matchBorrowerSubstring
+        });
+    }
+
     // Initial calculation
     calculateCheckpoint();
 });

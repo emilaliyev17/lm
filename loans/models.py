@@ -313,6 +313,7 @@ class LoanStatus(models.Model):
     is_active = models.BooleanField(default=True, help_text="Is this status available for selection")
     order = models.IntegerField(default=0, help_text="Display order in dropdowns")
     can_delete = models.BooleanField(default=True, help_text="Protect core statuses from deletion")
+    stops_interest_accrual = models.BooleanField(default=False, help_text="Stop calculating interest when loan has this status")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
