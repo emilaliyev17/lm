@@ -497,7 +497,7 @@ function saveNewInvoice() {
     // Get card number from URL
     var cardNumber = '{{ loan.card_number }}';
     
-    fetch('/loans/' + cardNumber + '/add-interest-invoice/', {
+    fetch('/api/loans/' + cardNumber + '/add-interest-invoice/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -512,6 +512,10 @@ function saveNewInvoice() {
         } else {
             alert('Failed to add invoice: ' + (data.error || 'Unknown error'));
         }
+    })
+    .catch(error => {
+        alert('Error saving invoice: ' + error);
+        console.error('Error:', error);
     });
 }
 </script>
@@ -522,7 +526,7 @@ function confirmDelete(scheduleId) {
         return;
     }
 
-    fetch('/interest-schedule/' + scheduleId + '/delete/', {
+    fetch('/api/interest-schedule/' + scheduleId + '/delete/', {
         method: 'DELETE',
         headers: {
             'X-CSRFToken': '{{ csrf_token }}'

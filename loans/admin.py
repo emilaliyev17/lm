@@ -1,7 +1,15 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from decimal import Decimal
-from .models import Borrower, LoanCard, SettlementChargeType, SettlementCharge, Draw, InterestPayment, LoanStatus
+from .models import (
+    Borrower,
+    LoanCard,
+    SettlementChargeType,
+    SettlementCharge,
+    Draw,
+    InterestSchedule,
+    LoanStatus,
+)
 
 
 class SettlementChargeInline(admin.TabularInline):
@@ -21,10 +29,21 @@ class DrawInline(admin.TabularInline):
     fields = ['draw_number', 'draw_date', 'amount', 'interest_rate', 'invoice_number']
 
 
-class InterestPaymentInline(admin.TabularInline):
-    model = InterestPayment
+class InterestScheduleInline(admin.TabularInline):
+    model = InterestSchedule
     extra = 0
-    fields = ['period_number', 'charge_date', 'amount', 'received_date', 'invoice_number']
+    fields = [
+        'period_number',
+        'period_type',
+        'charge_date',
+        'calculated_amount',
+        'adjusted_amount',
+        'is_posted',
+        'invoice_number',
+        'received_date',
+        'posted_at',
+    ]
+    readonly_fields = ['is_posted', 'posted_at']
 
 
 @admin.register(Borrower)
@@ -55,7 +74,7 @@ class LoanCardAdmin(admin.ModelAdmin):
     readonly_fields = ['checkpoint_display', 'total_funded_display', 
                       'monthly_interest_display', 'created_at', 'updated_at']
     
-    inlines = [SettlementChargeInline, DrawInline, InterestPaymentInline]
+    inlines = [SettlementChargeInline, DrawInline, InterestScheduleInline]
     
     fieldsets = (
         ('Basic Information', {
@@ -127,18 +146,19 @@ class DrawAdmin(admin.ModelAdmin):
     search_fields = ['loan_card__card_number', 'invoice_number']
 
 
-@admin.register(InterestPayment) 
-class InterestPaymentAdmin(admin.ModelAdmin):
-    list_display = ['loan_card', 'period_number', 'charge_date', 
-                    'amount', 'received_date', 'payment_status']
-    list_filter = ['charge_date', 'received_date']
+@admin.register(InterestSchedule)
+class InterestScheduleAdmin(admin.ModelAdmin):
+    list_display = [
+        'loan_card',
+        'period_number',
+        'period_type',
+        'effective_amount',
+        'is_posted',
+        'posted_at',
+    ]
+    list_filter = ['is_posted', 'period_type', 'charge_date']
     search_fields = ['loan_card__card_number', 'invoice_number']
-    
-    def payment_status(self, obj):
-        if obj.is_paid:
-            return format_html('<span style="color: green;">✓ Paid</span>')
-        return format_html('<span style="color: orange;">⏳ Pending</span>')
-    payment_status.short_description = 'Status'
+    readonly_fields = ['posted_at', 'posted_by']
 
 
 @admin.register(LoanStatus)
