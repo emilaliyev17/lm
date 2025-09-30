@@ -8,8 +8,10 @@ from .models import (
     SettlementCharge,
     Draw,
     InterestSchedule,
+    PrepaidInterest,
     LoanStatus,
 )
+from .prepaid import ensure_prepaid_interest_for_loan
 
 
 class SettlementChargeInline(admin.TabularInline):
@@ -42,6 +44,7 @@ class InterestScheduleInline(admin.TabularInline):
         'invoice_number',
         'received_date',
         'posted_at',
+        'payment_source',
     ]
     readonly_fields = ['is_posted', 'posted_at']
 
@@ -137,6 +140,12 @@ class LoanCardAdmin(admin.ModelAdmin):
         return f"${obj.get_monthly_interest_for_initial():,.2f}"
     monthly_interest_display.short_description = 'Monthly Interest (initial)'
 
+    def save_formset(self, request, form, formset, change):
+        result = super().save_formset(request, form, formset, change)
+        if formset.model == SettlementCharge:
+            ensure_prepaid_interest_for_loan(form.instance)
+        return result
+
 
 @admin.register(Draw)
 class DrawAdmin(admin.ModelAdmin):
@@ -155,10 +164,22 @@ class InterestScheduleAdmin(admin.ModelAdmin):
         'effective_amount',
         'is_posted',
         'posted_at',
+        'payment_source',
     ]
     list_filter = ['is_posted', 'period_type', 'charge_date']
     search_fields = ['loan_card__card_number', 'invoice_number']
     readonly_fields = ['posted_at', 'posted_by']
+
+
+@admin.register(PrepaidInterest)
+class PrepaidInterestAdmin(admin.ModelAdmin):
+    list_display = ['loan_card', 'initial_amount', 'remaining_balance', 'months_remaining']
+    readonly_fields = ['initial_amount', 'settlement_charge', 'monthly_amount']
+    search_fields = ['loan_card__card_number']
+
+    def months_remaining(self, obj):
+        return obj.get_months_remaining()
+    months_remaining.short_description = 'Months Remaining'
 
 
 @admin.register(LoanStatus)

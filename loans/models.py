@@ -247,6 +247,10 @@ class InterestSchedule(models.Model):
         ('daily', 'Daily'),
         ('monthly', 'Monthly'),
     ]
+    PAYMENT_SOURCE_CHOICES = [
+        ('bank', 'Bank Payment'),
+        ('prepaid', 'Prepaid Balance'),
+    ]
     
     loan_card = models.ForeignKey(LoanCard, on_delete=models.CASCADE, related_name='interest_schedules')
     period_number = models.IntegerField(
@@ -276,6 +280,12 @@ class InterestSchedule(models.Model):
     )
     posted_at = models.DateTimeField(blank=True, null=True)
     posted_by = models.CharField(max_length=100, blank=True, null=True)
+    payment_source = models.CharField(
+        max_length=20,
+        choices=PAYMENT_SOURCE_CHOICES,
+        default='bank',
+        help_text="Where the interest payment came from"
+    )
     
     @property
     def effective_amount(self):
@@ -303,6 +313,38 @@ class InterestSchedule(models.Model):
     class Meta:
         ordering = ['loan_card', 'charge_date', 'period_number']
         unique_together = ['loan_card', 'period_type', 'period_number']
+
+
+class PrepaidInterest(models.Model):
+    """Track prepaid interest balances tied to a loan"""
+
+    loan_card = models.OneToOneField(
+        LoanCard,
+        on_delete=models.CASCADE,
+        related_name='prepaid_interest'
+    )
+    settlement_charge = models.ForeignKey(
+        SettlementCharge,
+        on_delete=models.PROTECT,
+        related_name='prepaid_interest_records'
+    )
+    initial_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    remaining_balance = models.DecimalField(max_digits=12, decimal_places=2)
+    months_covered = models.IntegerField()
+    monthly_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def get_months_remaining(self):
+        if self.monthly_amount and self.monthly_amount > 0:
+            return int(self.remaining_balance // self.monthly_amount)
+        return 0
+
+    def __str__(self):
+        return f"Prepaid Interest for {self.loan_card.card_number}"
+
+    class Meta:
+        ordering = ['loan_card__card_number']
 
 
 class LoanStatus(models.Model):

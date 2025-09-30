@@ -61,6 +61,37 @@
         </table>
     </div>
     <div class="detail-card">
+        <h3>Prepaid Interest Status</h3>
+        {% if prepaid_interest %}
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                <div>
+                    <strong>Initial Amount:</strong> ${{ prepaid_interest.initial_amount|floatformat:2|intcomma }}<br>
+                    <strong>Monthly Amount:</strong> ${{ prepaid_interest.monthly_amount|floatformat:2|intcomma }}
+                </div>
+                <div>
+                    <strong>Remaining Balance:</strong>
+                    <span {% if prepaid_interest.low_balance %}style="color: #e67e22; font-weight: bold;"{% endif %}>
+                        ${{ prepaid_interest.remaining_balance|floatformat:2|intcomma }}
+                    </span><br>
+                    <strong>Months Covered:</strong> {{ prepaid_interest.months_covered }}
+                </div>
+            </div>
+            <div style="margin-top: 0.75rem;">
+                <strong>Months Remaining:</strong>
+                <span {% if prepaid_interest.low_balance %}style="color: #e67e22; font-weight: bold;"{% endif %}>
+                    {{ prepaid_interest.months_remaining }}
+                </span>
+                {% if prepaid_interest.low_balance %}
+                    <span style="display: inline-block; margin-left: 0.5rem; padding: 0.15rem 0.5rem; background: rgba(230, 126, 34, 0.15); border-radius: 4px; color: #e67e22;">
+                        Warning: Less than two months remaining
+                    </span>
+                {% endif %}
+            </div>
+        {% else %}
+            <p style="color: #999;">No prepaid interest</p>
+        {% endif %}
+    </div>
+    <div class="detail-card">
         <h3>Funding Information</h3>
         <table>
             <tr>

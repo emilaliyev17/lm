@@ -192,6 +192,32 @@
         </div>
         <div class="modal-body">
             <form id="postForm">
+                {% if prepaid_interest and prepaid_interest.remaining_balance > 0 %}
+                <div class="form-group">
+                    <label>Payment Source:</label>
+                    <div class="payment-source-options">
+                        <label class="radio-option">
+                            <input type="radio" name="paymentSource" value="bank" checked>
+                            Bank Payment
+                        </label>
+                        <label class="radio-option" id="prepaidOption">
+                            <input type="radio" name="paymentSource" value="prepaid">
+                            Use Prepaid Balance (Available: $<span id="prepaidAvailableText">{{ prepaid_interest.remaining_balance|floatformat:2 }}</span>)
+                        </label>
+                    </div>
+                    <div id="prepaidWarning" class="prepaid-warning" style="display: none;">Insufficient prepaid balance for this amount</div>
+                    <input type="hidden" id="prepaidAvailable" value="{{ prepaid_interest.remaining_balance }}">
+                </div>
+                {% else %}
+                <div class="form-group">
+                    <label>Payment Source:</label>
+                    <div class="payment-source-options">
+                        <span>Bank Payment</span>
+                    </div>
+                    <input type="hidden" name="paymentSource" value="bank">
+                </div>
+                {% endif %}
+
                 <div class="form-group">
                     <label for="currentAmount">Current Amount:</label>
                     <div id="currentAmount" class="readonly-field">$0.00</div>
@@ -290,6 +316,23 @@
         color: #fff;
     }
 
+    .payment-source-options {
+        display: grid;
+        gap: 0.5rem;
+    }
+
+    .payment-source-options .radio-option {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .prepaid-warning {
+        margin-top: 0.5rem;
+        color: #e67e22;
+        font-weight: bold;
+    }
+
     /* Modal styles */
     .modal {
         position: fixed;
@@ -376,6 +419,43 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const prepaidAvailableInput = document.getElementById('prepaidAvailable');
+
+    function updatePrepaidOption(amountValue) {
+        const prepaidRadio = document.querySelector('input[name="paymentSource"][value="prepaid"]');
+        const bankRadio = document.querySelector('input[name="paymentSource"][value="bank"]');
+        const warning = document.getElementById('prepaidWarning');
+
+        if (!prepaidRadio || !prepaidAvailableInput) {
+            if (warning) {
+                warning.style.display = 'none';
+            }
+            return;
+        }
+
+        const available = parseFloat(prepaidAvailableInput.value || '0');
+        const amount = parseFloat(amountValue || '0');
+        const availableLabel = document.getElementById('prepaidAvailableText');
+        if (availableLabel && !Number.isNaN(available)) {
+            availableLabel.textContent = available.toFixed(2);
+        }
+
+        const insufficient = Number.isNaN(amount) || available <= 0 || amount > available;
+        prepaidRadio.disabled = insufficient;
+
+        if (insufficient) {
+            if (warning) {
+                warning.style.display = 'block';
+            }
+            if (prepaidRadio.checked && bankRadio) {
+                bankRadio.checked = true;
+            }
+            prepaidRadio.checked = false;
+        } else if (warning) {
+            warning.style.display = 'none';
+        }
+    }
+
     // Handle Post button clicks
     document.querySelectorAll('.post-btn').forEach(button => {
         button.addEventListener('click', function() {
@@ -397,9 +477,22 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('adjustedAmount').value = currentAmount.toFixed(2);
         document.getElementById('receivedDate').value = new Date().toISOString().split('T')[0]; // Today's date
         document.getElementById('invoiceNumber').value = '';
+
+        const bankRadio = document.querySelector('input[name="paymentSource"][value="bank"]');
+        if (bankRadio) {
+            bankRadio.checked = true;
+        }
+        updatePrepaidOption(currentAmount);
         
         // Show modal
         document.getElementById('postModal').style.display = 'flex';
+    }
+
+    const adjustedAmountInput = document.getElementById('adjustedAmount');
+    if (adjustedAmountInput) {
+        adjustedAmountInput.addEventListener('input', function() {
+            updatePrepaidOption(this.value);
+        });
     }
     
     function getCSRFToken() {
@@ -428,7 +521,8 @@ document.addEventListener('DOMContentLoaded', function() {
             schedule_id: window.currentScheduleId,
             received_date: formData.get('receivedDate'),
             invoice_number: formData.get('invoiceNumber') || '',
-            adjusted_amount: formData.get('adjustedAmount')
+            adjusted_amount: formData.get('adjustedAmount'),
+            payment_source: formData.get('paymentSource') || 'bank'
         };
         
         // Send POST request

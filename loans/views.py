@@ -11,6 +11,7 @@ from datetime import datetime, date, timedelta
 import calendar
 import logging
 from .models import LoanCard, Borrower, SettlementChargeType, SettlementCharge, Draw, InterestSchedule, LoanStatus, LoanExtension
+from .prepaid import ensure_prepaid_interest_for_loan
 
 
 logger = logging.getLogger(__name__)
@@ -90,6 +91,25 @@ def loan_detail(request, card_number):
 
     available_statuses = LoanStatus.objects.filter(is_active=True).order_by('order', 'name')
 
+    prepaid_interest = getattr(loan, 'prepaid_interest', None)
+    prepaid_context = None
+    if prepaid_interest:
+        months_remaining = prepaid_interest.get_months_remaining()
+        monthly_amount = prepaid_interest.monthly_amount or Decimal('0')
+        low_balance_threshold = monthly_amount * 2
+        low_balance = (
+            monthly_amount > 0 and
+            prepaid_interest.remaining_balance < low_balance_threshold
+        )
+        prepaid_context = {
+            'initial_amount': prepaid_interest.initial_amount,
+            'remaining_balance': prepaid_interest.remaining_balance,
+            'months_covered': prepaid_interest.months_covered,
+            'months_remaining': months_remaining,
+            'monthly_amount': monthly_amount,
+            'low_balance': low_balance,
+        }
+
     context = {
         'loan': loan,
         'total_funded': total_funded,
@@ -103,6 +123,7 @@ def loan_detail(request, card_number):
         'effective_status_code': status_code,
         'effective_status_display': status_display_code,
         'available_statuses': available_statuses,
+        'prepaid_interest': prepaid_context,
     }
 
     return render(request, 'loans/loan_detail.html', context)
@@ -320,6 +341,9 @@ def create_loan(request):
             
             # Double-check by updating totals
             loan.update_settlement_charges_total()
+
+            # Auto-create prepaid interest if configured charge exists
+            ensure_prepaid_interest_for_loan(loan)
             
             return redirect('loan_detail', card_number=loan.card_number)
         else:
@@ -571,10 +595,21 @@ def interest_schedule(request, card_number):
     
     # Get or create interest schedules
     schedules = loan.interest_schedules.all().order_by('charge_date')
+
+    prepaid_interest = getattr(loan, 'prepaid_interest', None)
+    prepaid_context = None
+    if prepaid_interest:
+        months_remaining = prepaid_interest.get_months_remaining()
+        prepaid_context = {
+            'initial_amount': prepaid_interest.initial_amount,
+            'remaining_balance': prepaid_interest.remaining_balance,
+            'months_remaining': months_remaining,
+        }
     
     context = {
         'loan': loan,
         'schedules': schedules,
+        'prepaid_interest': prepaid_context,
     }
     return render(request, 'loans/interest_schedule.html', context)
 
@@ -681,6 +716,7 @@ def post_interest_schedule(request):
             received_date = data.get('received_date')
             invoice_number = data.get('invoice_number')
             adjusted_amount = data.get('adjusted_amount')
+            payment_source = data.get('payment_source', 'bank')
             
             if not schedule_id:
                 return JsonResponse({'success': False, 'error': 'Schedule ID is required'})
@@ -691,6 +727,10 @@ def post_interest_schedule(request):
             # Check if already posted
             if schedule.is_posted:
                 return JsonResponse({'success': False, 'error': 'This schedule is already posted'})
+
+            valid_sources = {choice[0] for choice in InterestSchedule.PAYMENT_SOURCE_CHOICES}
+            if payment_source not in valid_sources:
+                payment_source = 'bank'
             
             # Update the schedule
             if received_date:
@@ -704,14 +744,32 @@ def post_interest_schedule(request):
             
             if adjusted_amount:
                 try:
-                    schedule.adjusted_amount = Decimal(str(adjusted_amount))
+                    schedule.adjusted_amount = Decimal(str(adjusted_amount)).quantize(Decimal('0.01'))
                 except (ValueError, TypeError):
                     return JsonResponse({'success': False, 'error': 'Invalid amount'})
-            
+
+            amount_to_post = schedule.adjusted_amount if schedule.adjusted_amount is not None else schedule.calculated_amount
+            amount_to_post = amount_to_post.quantize(Decimal('0.01')) if amount_to_post is not None else Decimal('0.00')
+
+            if payment_source == 'prepaid':
+                prepaid_record = getattr(schedule.loan_card, 'prepaid_interest', None)
+                if not prepaid_record:
+                    return JsonResponse({'success': False, 'error': 'No prepaid balance available for this loan'}, status=400)
+
+                if amount_to_post > prepaid_record.remaining_balance:
+                    return JsonResponse({'success': False, 'error': 'Insufficient prepaid balance for this payment'}, status=400)
+
+                new_balance = (prepaid_record.remaining_balance - amount_to_post).quantize(Decimal('0.01'))
+                if new_balance < Decimal('0.00'):
+                    new_balance = Decimal('0.00')
+                prepaid_record.remaining_balance = new_balance
+                prepaid_record.save(update_fields=['remaining_balance', 'updated_at'])
+
             # Mark as posted
             schedule.is_posted = True
             schedule.posted_at = timezone.now()
             schedule.posted_by = 'Admin'  # You might want to use request.user.username if you have authentication
+            schedule.payment_source = payment_source
             schedule.save()
             
             return JsonResponse({
