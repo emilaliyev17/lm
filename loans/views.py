@@ -10,8 +10,10 @@ from decimal import Decimal, InvalidOperation
 from datetime import datetime, date, timedelta
 import calendar
 import logging
-from .models import LoanCard, Borrower, SettlementChargeType, SettlementCharge, Draw, InterestSchedule, LoanStatus, LoanExtension
+from .models import LoanCard, Borrower, SettlementChargeType, SettlementCharge, Draw, InterestSchedule, InterestPayment, LoanStatus, LoanExtension
 from .prepaid import ensure_prepaid_interest_for_loan
+from django.db.models import Q, F, Value, CharField
+from django.db.models.functions import Coalesce
 
 
 logger = logging.getLogger(__name__)
@@ -230,6 +232,250 @@ def api_loan_detail(request, card_number):
     }
     
     return JsonResponse(data)
+
+
+@login_required
+def search_loans(request):
+    """
+    Universal search across card numbers, borrower names, and ALL invoice types.
+    Searches 5 invoice fields:
+    1. LoanCard.advanced_loan_invoice
+    2. SettlementCharge.invoice_number
+    3. Draw.invoice_number
+    4. InterestSchedule.invoice_number (posted only)
+    5. InterestPayment.invoice_number (legacy)
+    """
+    query = request.GET.get('q', '').strip()
+    
+    # Validation
+    if not query:
+        return JsonResponse({'error': 'Please enter a search query', 'results': []})
+    
+    if len(query) < 2:
+        return JsonResponse({'error': 'Please enter at least 2 characters', 'results': []})
+    
+    if len(query) > 100:
+        return JsonResponse({'error': 'Search query too long', 'results': []})
+    
+    # Track search start time for performance monitoring
+    import time
+    start_time = time.time()
+    
+    all_results = []
+    
+    # 1. Search by Card Number (highest priority - exact identifier)
+    card_matches = LoanCard.objects.filter(
+        card_number__icontains=query
+    ).select_related('borrower', 'dynamic_status')[:10]
+    
+    for loan in card_matches:
+        status_display = 'Unknown'
+        if loan.dynamic_status:
+            status_display = loan.dynamic_status.name or loan.dynamic_status.code or 'Unknown'
+        
+        all_results.append({
+            'match_type': 'card_number',
+            'match_type_display': 'Card Number',
+            'card_number': loan.card_number,
+            'borrower_name': loan.borrower.name,
+            'status': status_display,
+            'detail_url': f'/api/loans/{loan.card_number}/',
+            'highlight': loan.card_number,
+            'context': f'Advanced Loan: ${loan.advanced_loan_amount}',
+            'icon': '📄',
+            'color': 'purple'
+        })
+    
+    # 2. Search by Borrower Name
+    borrower_matches = LoanCard.objects.filter(
+        borrower__name__icontains=query
+    ).select_related('borrower', 'dynamic_status')[:10]
+    
+    for loan in borrower_matches:
+        # Skip if already added by card number search
+        if any(r['card_number'] == loan.card_number and r['match_type'] == 'card_number' 
+               for r in all_results):
+            continue
+        
+        status_display = 'Unknown'
+        if loan.dynamic_status:
+            status_display = loan.dynamic_status.name or loan.dynamic_status.code or 'Unknown'
+        
+        all_results.append({
+            'match_type': 'borrower_name',
+            'match_type_display': 'Borrower Name',
+            'card_number': loan.card_number,
+            'borrower_name': loan.borrower.name,
+            'status': status_display,
+            'detail_url': f'/api/loans/{loan.card_number}/',
+            'highlight': loan.borrower.name,
+            'context': f'Card: {loan.card_number}',
+            'icon': '👤',
+            'color': 'blue'
+        })
+    
+    # 3. Invoice Search - Advanced Loan Invoice
+    loan_invoices = LoanCard.objects.filter(
+        advanced_loan_invoice__isnull=False,
+        advanced_loan_invoice__icontains=query
+    ).select_related('borrower', 'dynamic_status')[:10]
+    
+    for loan in loan_invoices:
+        status_display = 'Unknown'
+        if loan.dynamic_status:
+            status_display = loan.dynamic_status.name or loan.dynamic_status.code or 'Unknown'
+        
+        all_results.append({
+            'match_type': 'advanced_loan_invoice',
+            'match_type_display': 'Main Loan Invoice',
+            'card_number': loan.card_number,
+            'borrower_name': loan.borrower.name,
+            'status': status_display,
+            'detail_url': f'/api/loans/{loan.card_number}/',
+            'invoice_number': loan.advanced_loan_invoice,
+            'amount': str(loan.advanced_loan_amount),
+            'date': loan.first_loan_date.isoformat(),
+            'context': f'Advanced Loan: ${loan.advanced_loan_amount}',
+            'icon': '📄',
+            'color': 'purple'
+        })
+    
+    # 4. Invoice Search - Settlement Charges
+    settlement_invoices = SettlementCharge.objects.filter(
+        invoice_number__isnull=False,
+        invoice_number__icontains=query
+    ).select_related('loan_card', 'loan_card__borrower', 'loan_card__dynamic_status', 'charge_type')[:20]
+    
+    for charge in settlement_invoices:
+        loan = charge.loan_card
+        status_display = 'Unknown'
+        if loan.dynamic_status:
+            status_display = loan.dynamic_status.name or loan.dynamic_status.code or 'Unknown'
+        
+        all_results.append({
+            'match_type': 'settlement_charge',
+            'match_type_display': 'Settlement Charge',
+            'card_number': loan.card_number,
+            'borrower_name': loan.borrower.name,
+            'status': status_display,
+            'detail_url': f'/api/loans/{loan.card_number}/',
+            'invoice_number': charge.invoice_number,
+            'amount': str(charge.amount),
+            'date': charge.created_at.date().isoformat(),
+            'charge_type': charge.charge_type.name,
+            'context': f'{charge.charge_type.name}: ${charge.amount}',
+            'icon': '💰',
+            'color': 'blue'
+        })
+    
+    # 5. Invoice Search - Additional Draws
+    draw_invoices = Draw.objects.filter(
+        invoice_number__isnull=False,
+        invoice_number__icontains=query
+    ).select_related('loan_card', 'loan_card__borrower', 'loan_card__dynamic_status')[:20]
+    
+    for draw in draw_invoices:
+        loan = draw.loan_card
+        status_display = 'Unknown'
+        if loan.dynamic_status:
+            status_display = loan.dynamic_status.name or loan.dynamic_status.code or 'Unknown'
+        
+        all_results.append({
+            'match_type': 'draw',
+            'match_type_display': 'Additional Draw',
+            'card_number': loan.card_number,
+            'borrower_name': loan.borrower.name,
+            'status': status_display,
+            'detail_url': f'/api/loans/{loan.card_number}/',
+            'invoice_number': draw.invoice_number,
+            'amount': str(draw.amount),
+            'date': draw.draw_date.isoformat(),
+            'charge_type': f'Draw #{draw.draw_number}',
+            'context': f'Draw #{draw.draw_number}: ${draw.amount}',
+            'icon': '📦',
+            'color': 'orange'
+        })
+    
+    # 6. Invoice Search - Interest Schedule (posted only)
+    interest_schedule_invoices = InterestSchedule.objects.filter(
+        invoice_number__isnull=False,
+        invoice_number__icontains=query,
+        is_posted=True
+    ).select_related('loan_card', 'loan_card__borrower', 'loan_card__dynamic_status')[:20]
+    
+    for schedule in interest_schedule_invoices:
+        loan = schedule.loan_card
+        status_display = 'Unknown'
+        if loan.dynamic_status:
+            status_display = loan.dynamic_status.name or loan.dynamic_status.code or 'Unknown'
+        
+        amount = schedule.adjusted_amount if schedule.adjusted_amount else schedule.calculated_amount
+        
+        all_results.append({
+            'match_type': 'interest_schedule',
+            'match_type_display': 'Interest Payment',
+            'card_number': loan.card_number,
+            'borrower_name': loan.borrower.name,
+            'status': status_display,
+            'detail_url': f'/api/loans/{loan.card_number}/',
+            'invoice_number': schedule.invoice_number,
+            'amount': str(amount),
+            'date': schedule.charge_date.isoformat(),
+            'charge_type': f'Period {schedule.period_number}',
+            'context': f'Interest Period {schedule.period_number}: ${amount}',
+            'icon': '📅',
+            'color': 'green'
+        })
+    
+    # 7. Invoice Search - Interest Payment (legacy system)
+    interest_payment_invoices = InterestPayment.objects.filter(
+        invoice_number__isnull=False,
+        invoice_number__icontains=query
+    ).select_related('loan_card', 'loan_card__borrower', 'loan_card__dynamic_status')[:20]
+    
+    for payment in interest_payment_invoices:
+        loan = payment.loan_card
+        status_display = 'Unknown'
+        if loan.dynamic_status:
+            status_display = loan.dynamic_status.name or loan.dynamic_status.code or 'Unknown'
+        
+        all_results.append({
+            'match_type': 'interest_payment',
+            'match_type_display': 'Interest Payment (Legacy)',
+            'card_number': loan.card_number,
+            'borrower_name': loan.borrower.name,
+            'status': status_display,
+            'detail_url': f'/api/loans/{loan.card_number}/',
+            'invoice_number': payment.invoice_number,
+            'amount': str(payment.amount),
+            'date': payment.charge_date.isoformat(),
+            'charge_type': 'Interest',
+            'context': f'Interest: ${payment.amount}',
+            'icon': '🕐',
+            'color': 'gray'
+        })
+    
+    # Calculate search time
+    search_time_ms = int((time.time() - start_time) * 1000)
+    
+    # Limit total results to 20
+    all_results = all_results[:20]
+    
+    # Prepare response
+    response_data = {
+        'results': all_results,
+        'query': query,
+        'count': len(all_results),
+        'search_time_ms': search_time_ms
+    }
+    
+    # Log search for audit trail
+    logger.info(
+        f"Search performed: user={request.user.username}, query='{query}', "
+        f"results={len(all_results)}, time={search_time_ms}ms"
+    )
+    
+    return JsonResponse(response_data)
 
 
 @login_required
